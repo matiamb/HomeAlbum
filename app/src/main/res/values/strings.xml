@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">HomeAlbum</string>
+    <string name="image_1">Image 1</string>
+    <string name="image_2">Image 2</string>
+    <string name="image_3">Image 3</string>
+    <string name="image_4">Image 4</string>
+    <string name="image_5">Image 5</string>
+    <string name="image_6">Image 6</string>
+    <string name="image_7">Image 7</string>
+    <string name="image_8">Image 8</string>
+    <string name="image_9">Image 9</string>
+    <string name="image_10">Image 10</string>
+    <string name="image_11">Image 11</string>
+    <string name="image_12">Image 12</string>
+    <string name="image_13">Image 13</string>
+    <string name="image_14">Image 14</string>
+</resources>
