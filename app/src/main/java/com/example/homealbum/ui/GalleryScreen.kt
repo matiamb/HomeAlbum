@@ -1,5 +1,11 @@
 package com.example.homealbum.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -18,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -28,10 +35,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
 import com.example.homealbum.data.GalleryViewModel
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.homealbum.data.GalleryViewModelFactory
+import com.example.homealbum.model.PhotoRepository
 
 enum class AppScreens{
     GALLERY_START,
@@ -65,7 +81,7 @@ fun HomeAlbumApp(
 }
 @Composable
 fun GalleryScreen(
-    galleryViewModel: GalleryViewModel = viewModel(),
+    //galleryViewModel: GalleryViewModel = viewModel(),
     onSettingsFabClicked: () -> Unit
 ){
     Scaffold(
@@ -75,10 +91,49 @@ fun GalleryScreen(
             onSettingsFabClicked
         )}
     ) { innerPadding ->
-        GalleryGrid(
-            galleryViewModel = galleryViewModel,
-            modifier = Modifier.padding(innerPadding)
+        val context = LocalContext.current
+        val photoRepository = PhotoRepository(context)
+
+        val factory = GalleryViewModelFactory(photoRepository)
+        val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
+
+        val permissionToRequest = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        var hasPermission by remember {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(context, permissionToRequest) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+            onResult = {isGranted ->
+                hasPermission = isGranted
+                if(isGranted){
+                    galleryViewModel.loadPhotos()
+                }
+            }
         )
+
+        LaunchedEffect(Unit) {
+            if (!hasPermission){
+                permissionLauncher.launch(permissionToRequest)
+            } else {
+                galleryViewModel.loadPhotos()
+            }
+        }
+
+        if(hasPermission){
+            GalleryGrid(
+                galleryViewModel = galleryViewModel,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else {
+            //permissionLauncher.launch(permissionToRequest)
+        }
     }
 }
 
@@ -96,11 +151,11 @@ private fun GalleryGrid(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(gameUiState.value.photoList){ item ->
-            Image(
-                painter = painterResource(item.photoRes),
-                contentDescription = stringResource(item.descriptionRes),
+            AsyncImage(
+                model = item,
+                contentDescription = "",
                 modifier = Modifier.height(150.dp),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
         }
     }
