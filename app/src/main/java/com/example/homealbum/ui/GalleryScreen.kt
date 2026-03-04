@@ -1,13 +1,18 @@
 package com.example.homealbum.ui
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -39,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
@@ -132,7 +138,16 @@ fun GalleryScreen(
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
-            //permissionLauncher.launch(permissionToRequest)
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                RequestPermissionFab(
+                    onRequestPermissionClicked = {
+                        openPermissionSettings(context)
+                    }
+                )
+            }
         }
     }
 }
@@ -187,10 +202,33 @@ private fun GalleryTopBar(){
     )
 }
 
+@Composable
+fun RequestPermissionFab(
+    onRequestPermissionClicked: () -> Unit,
+    modifier: Modifier = Modifier
+){
+    FloatingActionButton(
+        onRequestPermissionClicked,
+        modifier = modifier.padding(8.dp)
+    ) {
+        Text(
+            text = "Request Permission",
+            modifier = Modifier.padding(8.dp)
+        )
+    }
+}
+
+private fun openPermissionSettings(context: Context){
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", context.packageName, null)
+    }
+    context.startActivity(intent)
+}
+
 @Preview(showSystemUi = true)
 @Composable
-private fun GalleryScreenPreview(){
-    GalleryScreen(
-        onSettingsFabClicked = {}
+private fun RequestPermissionPreview(){
+    RequestPermissionFab(
+        onRequestPermissionClicked = {}
     )
 }
