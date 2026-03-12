@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -45,25 +47,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryViewModelFactory
 import com.example.homealbum.model.PhotoRepository
 
 enum class AppScreens{
     GALLERY_START,
-    SETTINGS
+    SETTINGS,
+    IMAGE_VIEW
 }
 
 @Composable
 fun HomeAlbumApp(
     navController: NavHostController = rememberNavController()
 ){
+    val context = LocalContext.current
+    val photoRepository = PhotoRepository(context)
+
+    val factory = GalleryViewModelFactory(photoRepository)
+    val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
     NavHost(
         navController = navController,
         startDestination = AppScreens.GALLERY_START.name,
@@ -73,8 +84,12 @@ fun HomeAlbumApp(
             route = AppScreens.GALLERY_START.name
         ){
             GalleryScreen(
+                galleryViewModel = galleryViewModel,
                 onSettingsFabClicked = {
                     navController.navigate(AppScreens.SETTINGS.name)
+                },
+                onImageClicked = { index ->
+                    navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
                 }
             )
         }
@@ -83,12 +98,23 @@ fun HomeAlbumApp(
         ){
             SettingsScreen()
         }
+        composable(
+            route = "${AppScreens.IMAGE_VIEW.name}/{index}",
+            arguments = listOf(navArgument("index") { type = NavType.IntType })
+        ) { navBackStackEntry ->
+            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
+            ImageScreen(
+                galleryViewModel = galleryViewModel,
+                initialPageIndex = index
+                )
+        }
     }
 }
 @Composable
 fun GalleryScreen(
-    //galleryViewModel: GalleryViewModel = viewModel(),
-    onSettingsFabClicked: () -> Unit
+    galleryViewModel: GalleryViewModel,
+    onSettingsFabClicked: () -> Unit,
+    onImageClicked: (Int) -> Unit
 ){
     Scaffold(
         topBar = {GalleryTopBar()},
@@ -98,10 +124,10 @@ fun GalleryScreen(
         )}
     ) { innerPadding ->
         val context = LocalContext.current
-        val photoRepository = PhotoRepository(context)
-
-        val factory = GalleryViewModelFactory(photoRepository)
-        val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
+//        val photoRepository = PhotoRepository(context)
+//
+//        val factory = GalleryViewModelFactory(photoRepository)
+//        val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
 
         val permissionToRequest = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
             Manifest.permission.READ_MEDIA_IMAGES
@@ -135,6 +161,7 @@ fun GalleryScreen(
         if(hasPermission){
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
+                onImageClicked = onImageClicked,
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
@@ -155,6 +182,7 @@ fun GalleryScreen(
 @Composable
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
+    onImageClicked: (Int) -> Unit,
     modifier: Modifier = Modifier
 ){
     val gameUiState = galleryViewModel.galleryUiState.collectAsState()
@@ -165,12 +193,16 @@ private fun GalleryGrid(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(gameUiState.value.photoList){ item ->
+        itemsIndexed(
+            items = gameUiState.value.photoList,
+            key = {_, uri -> uri.toString()}
+        ){ index, uri ->
             AsyncImage(
-                model = item,
+                model = uri,
                 contentDescription = "",
-                modifier = Modifier.height(150.dp),
-                contentScale = ContentScale.Crop,
+                modifier = Modifier.height(150.dp).clickable(true, onClick = {onImageClicked(index)}),
+                filterQuality = FilterQuality.Low,
+                contentScale = ContentScale.Crop
             )
         }
     }
@@ -224,6 +256,8 @@ private fun openPermissionSettings(context: Context){
     }
     context.startActivity(intent)
 }
+
+
 
 @Preview(showSystemUi = true)
 @Composable
