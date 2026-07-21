@@ -1,7 +1,9 @@
 package com.example.homealbum.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyRow
@@ -12,7 +14,13 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,10 +77,26 @@ fun ImageRoll(
         modifier = modifier.fillMaxSize().background(color = MaterialTheme.colorScheme.inverseOnSurface)
     ) { page ->
         val uri = uiState.value.photoList[page]
+        var isZoomed by remember { mutableStateOf(false) }
+        val scale by animateFloatAsState(
+            targetValue = if (isZoomed) 3f else 1f,
+            label = "zoom_animation"
+        )
         AsyncImage(
             model = uri,
             contentDescription = "",
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale
+                )
+                .pointerInput(Unit){
+                    detectTapGestures(
+                        onDoubleTap = {
+                            isZoomed = !isZoomed
+                        }
+                    )
+                },
             contentScale = ContentScale.Fit
         )
     }
