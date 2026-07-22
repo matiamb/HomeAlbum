@@ -12,14 +12,25 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,6 +48,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryViewModel
 import com.example.homealbum.data.ImageDataSource.imageList
@@ -45,13 +60,25 @@ import com.example.homealbum.data.ImageDataSource.imageList
 fun ImageScreen(
     galleryViewModel: GalleryViewModel,
     initialPageIndex: Int,
+    onBackFabClicked: () -> Unit,
     modifier: Modifier = Modifier
 ){
-    ImageRoll(
-        galleryViewModel = galleryViewModel,
-        initialPageIndex
-    )
+    Scaffold(
+        bottomBar = { BottomToolbar(
+            onDeleteClicked = {},
+            onSharedClicked = {},
+            onBackFabClicked = onBackFabClicked
+        ) },
+        modifier = Modifier
+    ) { paddingValues ->
+        ImageRoll(
+            galleryViewModel = galleryViewModel,
+            initialPageIndex,
+            modifier = Modifier.padding(paddingValues)
+        )
+    }
 }
+
 
 @Composable
 fun ImageRoll(
@@ -147,11 +174,55 @@ fun ImageRoll(
     }
 }
 
+@Composable
+fun BottomToolbar(
+    onDeleteClicked: () -> Unit,
+    onSharedClicked: () -> Unit,
+    onBackFabClicked: () -> Unit,
+    modifier: Modifier = Modifier
+){
+    BottomAppBar(
+        actions = {
+            IconButton(onClick = onDeleteClicked) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "Delete"
+                )
+            }
+            IconButton(onClick = onSharedClicked) {
+                Icon(
+                    Icons.Filled.Share,
+                    contentDescription = "Share"
+                )
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onBackFabClicked) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        }
+    )
+}
+
+//@Preview(showSystemUi = true)
+//@Composable
+//private fun ImageScreenPreview(){
+//    val galleryViewModel: GalleryViewModel = viewModel()
+//    ImageScreen(
+//        galleryViewModel = galleryViewModel,
+//        initialPageIndex = 1
+//)
+//}
+
 @Preview(showSystemUi = true)
 @Composable
-private fun ImageScreenPreview(){
-    //val galleryViewModel: GalleryViewModel = viewModel()
-//    ImageScreen(
-//    //galleryViewModel = galleryViewModel
-//)
+private fun BottomToolbarPreview(){
+    BottomToolbar(
+        onDeleteClicked = {},
+        onSharedClicked = {},
+        onBackFabClicked = {}
+    )
 }
