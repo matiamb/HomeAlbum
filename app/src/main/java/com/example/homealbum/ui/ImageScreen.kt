@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -25,12 +26,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,6 +52,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -63,9 +69,10 @@ fun ImageScreen(
     onBackFabClicked: () -> Unit,
     modifier: Modifier = Modifier
 ){
+    val openAlertDialog = remember{mutableStateOf(false)}
     Scaffold(
         bottomBar = { BottomToolbar(
-            onDeleteClicked = {},
+            onDeleteClicked = {openAlertDialog.value = true},
             onSharedClicked = {},
             onBackFabClicked = onBackFabClicked
         ) },
@@ -76,6 +83,14 @@ fun ImageScreen(
             initialPageIndex,
             modifier = Modifier.padding(paddingValues)
         )
+        if (openAlertDialog.value){
+            ConfirmDeleteDialog(
+                onDismissClicked = {
+                    openAlertDialog.value = false
+                },
+                onConfirmClicked = {}
+            )
+        }
     }
 }
 
@@ -207,6 +222,51 @@ fun BottomToolbar(
     )
 }
 
+@Composable
+fun ConfirmDeleteDialog(
+    modifier: Modifier = Modifier,
+    onDismissClicked: () -> Unit,
+    onConfirmClicked: () -> Unit
+){
+    AlertDialog(
+        onDismissRequest = onDismissClicked,
+        dismissButton = {
+           TextButton(
+               onClick = onDismissClicked
+           ) {
+               Text(
+                   text = "Return"
+               )
+           }
+                           },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirmClicked
+            ) {
+                Text(
+                    text = "Delete"
+                )
+            }
+        },
+        title = {
+            Text(
+                text = "Confirm delete?"
+            )
+        },
+        text = {
+            Text(
+                text = "This action cannot be undone"
+            )
+        },
+        icon = {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = ""
+            )
+        }
+    )
+}
+
 //@Preview(showSystemUi = true)
 //@Composable
 //private fun ImageScreenPreview(){
@@ -217,12 +277,21 @@ fun BottomToolbar(
 //)
 //}
 
-@Preview(showSystemUi = true)
+@Preview
 @Composable
 private fun BottomToolbarPreview(){
     BottomToolbar(
         onDeleteClicked = {},
         onSharedClicked = {},
         onBackFabClicked = {}
+    )
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun ConfirmDeleteDialogPreview(){
+    ConfirmDeleteDialog(
+        onDismissClicked = {},
+        onConfirmClicked = {}
     )
 }
