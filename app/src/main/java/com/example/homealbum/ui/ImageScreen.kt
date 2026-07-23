@@ -1,5 +1,9 @@
 package com.example.homealbum.ui
 
+import android.app.Activity
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.Image
@@ -38,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -59,6 +64,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.homealbum.data.GalleryUiState
 import com.example.homealbum.data.GalleryViewModel
 import com.example.homealbum.data.ImageDataSource.imageList
 
@@ -69,10 +75,31 @@ fun ImageScreen(
     onBackFabClicked: () -> Unit,
     modifier: Modifier = Modifier
 ){
+    val uiState = galleryViewModel.galleryUiState.collectAsState()
     val openAlertDialog = remember{mutableStateOf(false)}
+    val pagerState = rememberPagerState(
+        initialPage = initialPageIndex,
+        pageCount = {uiState.value.photoList.size}
+    )
+    val currentUri = uiState.value.photoList[pagerState.currentPage]
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) {result ->
+        if (result.resultCode == Activity.RESULT_OK){
+            galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+        }
+    }
     Scaffold(
         bottomBar = { BottomToolbar(
-            onDeleteClicked = {openAlertDialog.value = true},
+            onDeleteClicked = {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
+                    openAlertDialog.value = true
+                }else{
+                    galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
+                        deleteLauncher.launch(intentSenderRequest)
+                    }
+                }
+                              },
             onSharedClicked = {},
             onBackFabClicked = onBackFabClicked
         ) },
@@ -81,6 +108,8 @@ fun ImageScreen(
         ImageRoll(
             galleryViewModel = galleryViewModel,
             initialPageIndex,
+            uiState,
+            pagerState,
             modifier = Modifier.padding(paddingValues)
         )
         if (openAlertDialog.value){
@@ -99,13 +128,15 @@ fun ImageScreen(
 fun ImageRoll(
     galleryViewModel: GalleryViewModel,
     initialPageIndex: Int,
+    uiState: State<GalleryUiState>,
+    pagerState: PagerState,
     modifier: Modifier = Modifier
 ){
-    val uiState = galleryViewModel.galleryUiState.collectAsState()
-    val pagerState = rememberPagerState(
-        initialPage = initialPageIndex,
-        pageCount = {uiState.value.photoList.size}
-    )
+//    val uiState = galleryViewModel.galleryUiState.collectAsState()
+//    val pagerState = rememberPagerState(
+//        initialPage = initialPageIndex,
+//        pageCount = {uiState.value.photoList.size}
+//    )
     var scale by remember { mutableFloatStateOf(1f)}
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isZoomed by remember { mutableStateOf(false) }
