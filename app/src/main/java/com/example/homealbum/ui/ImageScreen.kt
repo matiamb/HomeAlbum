@@ -2,6 +2,7 @@ package com.example.homealbum.ui
 
 import android.app.Activity
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -77,15 +78,17 @@ fun ImageScreen(
 ){
     val uiState = galleryViewModel.galleryUiState.collectAsState()
     val openAlertDialog = remember{mutableStateOf(false)}
+    val safeInitialPage = minOf(initialPageIndex, uiState.value.photoList.size - 1)
     val pagerState = rememberPagerState(
-        initialPage = initialPageIndex,
+        initialPage = safeInitialPage,
         pageCount = {uiState.value.photoList.size}
     )
-    val currentUri = uiState.value.photoList[pagerState.currentPage]
+    //val currentUri = uiState.value.photoList[pagerState.currentPage]
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) {result ->
         if (result.resultCode == Activity.RESULT_OK){
+            val currentUri = uiState.value.photoList[pagerState.currentPage]
             galleryViewModel.removeThrashedPhotoFromUi(currentUri)
         }
     }
@@ -95,6 +98,7 @@ fun ImageScreen(
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
                 }else{
+                    val currentUri = uiState.value.photoList[pagerState.currentPage]
                     galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
                         deleteLauncher.launch(intentSenderRequest)
                     }
