@@ -1,10 +1,12 @@
 package com.example.homealbum.model
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import androidx.activity.result.IntentSenderRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -45,5 +47,24 @@ class PhotoRepository(private val context: Context) {
             }
         }
         return@withContext photoList
+    }
+    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO){
+        val contentResolver = context.contentResolver
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val pendingIntent = MediaStore.createTrashRequest(
+                contentResolver,
+                listOf(uri),
+                true
+            )
+            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+        } else {
+            try {
+                contentResolver.delete(uri,null,null)
+            } catch (e: SecurityException) {
+                throw e
+            }
+            null
+        }
     }
 }
