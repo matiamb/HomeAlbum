@@ -1,29 +1,20 @@
 package com.example.homealbum.ui
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -54,26 +45,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryUiState
 import com.example.homealbum.data.GalleryViewModel
-import com.example.homealbum.data.ImageDataSource.imageList
 
 @Composable
 fun ImageScreen(
     galleryViewModel: GalleryViewModel,
     initialPageIndex: Int,
     onBackFabClicked: () -> Unit,
+    onLastPhotoDeleted: () -> Unit,
     modifier: Modifier = Modifier
 ){
     val uiState = galleryViewModel.galleryUiState.collectAsState()
@@ -83,13 +67,20 @@ fun ImageScreen(
         initialPage = safeInitialPage,
         pageCount = {uiState.value.photoList.size}
     )
+    val context = LocalContext.current
     //val currentUri = uiState.value.photoList[pagerState.currentPage]
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) {result ->
         if (result.resultCode == Activity.RESULT_OK){
             val currentUri = uiState.value.photoList[pagerState.currentPage]
-            galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+            val photoCount = uiState.value.photoList.size
+            if (photoCount == 1){
+                galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+                onLastPhotoDeleted()
+            } else {
+                galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+            }
         }
     }
     Scaffold(
@@ -97,6 +88,7 @@ fun ImageScreen(
             onDeleteClicked = {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
+                    //TODO add functionality to this delete button
                 }else{
                     val currentUri = uiState.value.photoList[pagerState.currentPage]
                     galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
@@ -104,7 +96,10 @@ fun ImageScreen(
                     }
                 }
                               },
-            onSharedClicked = {},
+            onSharedClicked = {
+                val currentUri = uiState.value.photoList[pagerState.currentPage]
+                sharePhoto(context =context, uri = currentUri )
+                              },
             onBackFabClicked = onBackFabClicked
         ) },
         modifier = Modifier
@@ -125,6 +120,7 @@ fun ImageScreen(
             )
         }
     }
+    Log.d("Mati", "${uiState.value.photoList.size} photos left")
 }
 
 
@@ -311,6 +307,17 @@ fun ConfirmDeleteDialog(
 //        initialPageIndex = 1
 //)
 //}
+
+private fun sharePhoto(context: Context, uri: Uri){
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_STREAM, uri)
+        type = "image/*"
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+    val appChooser = Intent.createChooser(shareIntent, "Share on...")
+    context.startActivity(appChooser)
+}
 
 @Preview
 @Composable

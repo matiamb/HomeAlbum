@@ -106,7 +106,8 @@ fun HomeAlbumApp(
             ImageScreen(
                 galleryViewModel = galleryViewModel,
                 initialPageIndex = index,
-                onBackFabClicked = {navController.popBackStack()}
+                onBackFabClicked = {navController.popBackStack()},
+                onLastPhotoDeleted = {navController.popBackStack()}
                 )
         }
     }
