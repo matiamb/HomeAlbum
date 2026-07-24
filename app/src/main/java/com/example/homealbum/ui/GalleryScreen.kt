@@ -105,7 +105,9 @@ fun HomeAlbumApp(
             val index = navBackStackEntry.arguments?.getInt("index") ?: 0
             ImageScreen(
                 galleryViewModel = galleryViewModel,
-                initialPageIndex = index
+                initialPageIndex = index,
+                onBackFabClicked = {navController.popBackStack()},
+                onLastPhotoDeleted = {navController.popBackStack()}
                 )
         }
     }
