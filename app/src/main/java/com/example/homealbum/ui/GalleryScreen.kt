@@ -4,23 +4,22 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -34,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +64,7 @@ enum class AppScreens{
     IMAGE_VIEW
 }
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun HomeAlbumApp(
     navController: NavHostController = rememberNavController()
@@ -112,6 +111,7 @@ fun HomeAlbumApp(
         }
     }
 }
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun GalleryScreen(
     galleryViewModel: GalleryViewModel,
@@ -132,25 +132,37 @@ fun GalleryScreen(
 //        val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
 
         val permissionToRequest = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-            Manifest.permission.READ_MEDIA_IMAGES
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
         } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
         }
 
         var hasPermission by remember {
             mutableStateOf(
-                ContextCompat.checkSelfPermission(context, permissionToRequest) == PackageManager.PERMISSION_GRANTED
+                permissionToRequest.all { permission ->
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        permission
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
             )
         }
         val permissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission(),
-            onResult = {isGranted ->
-                hasPermission = isGranted
-                if(isGranted){
-                    galleryViewModel.loadPhotos()
-                }
-            }
-        )
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+//            onResult = {isGranted ->
+//                hasPermission = isGranted
+//                if(isGranted){
+//                    galleryViewModel.loadPhotos()
+//                }
+//            }
+        ){ permissionMap ->
+            hasPermission = permissionMap.values.all { isGranted -> isGranted }
+        }
 
         LaunchedEffect(Unit) {
             if (!hasPermission){
@@ -164,6 +176,7 @@ fun GalleryScreen(
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
                 onImageClicked = onImageClicked,
+                context = context,
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
@@ -181,13 +194,15 @@ fun GalleryScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
     onImageClicked: (Int) -> Unit,
+    context: Context,
     modifier: Modifier = Modifier
 ){
-    val gameUiState = galleryViewModel.galleryUiState.collectAsState()
+    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -196,11 +211,14 @@ private fun GalleryGrid(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         itemsIndexed(
-            items = gameUiState.value.photoList,
+            items = galleryUiState.value.photoList,
             key = {_, uri -> uri.toString()}
         ){ index, uri ->
+            val thumbnail: Bitmap = context.contentResolver.loadThumbnail(
+                uri, Size(640, 480), null
+            )
             AsyncImage(
-                model = uri,
+                model = thumbnail,
                 contentDescription = "",
                 modifier = Modifier.height(150.dp).clickable(true, onClick = {onImageClicked(index)}),
                 filterQuality = FilterQuality.Low,

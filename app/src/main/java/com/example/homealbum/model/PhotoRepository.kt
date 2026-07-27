@@ -15,20 +15,26 @@ class PhotoRepository(private val context: Context) {
         val photoList = mutableListOf<Uri>()
 
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ){
-            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            //MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            MediaStore.Files.getContentUri("external")
         }
 
         val columns = arrayOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DISPLAY_NAME
+//            MediaStore.Images.Media._ID,
+//            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.MEDIA_TYPE
         )
 
-        val cameraOnlyImages = "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?"
+//        val cameraOnlyImages = "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?"
+        val cameraOnlyImages = "${MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME} = ?"
         val argumentSelection = arrayOf("Camera")
 
-        val displayOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
+//        val displayOrder = "${MediaStore.Images.Media.DATE_TAKEN} DESC"
+        val displayOrder = "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC"
 
         context.contentResolver.query(
             collection,
@@ -37,13 +43,21 @@ class PhotoRepository(private val context: Context) {
             argumentSelection,
             displayOrder
         )?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+//            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val photoUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                val mediaType = cursor.getInt(typeColumn)
+                //val photoUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                val contentUri: Uri = if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
+                    ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                } else {
+                    ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                }
 
-                photoList.add(photoUri)
+                photoList.add(contentUri)
             }
         }
         return@withContext photoList

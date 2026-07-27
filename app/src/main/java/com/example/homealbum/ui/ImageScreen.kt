@@ -88,7 +88,6 @@ fun ImageScreen(
             onDeleteClicked = {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
-                    //TODO add functionality to this delete button
                 }else{
                     val currentUri = uiState.value.photoList[pagerState.currentPage]
                     galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
@@ -112,11 +111,15 @@ fun ImageScreen(
             modifier = Modifier.padding(paddingValues)
         )
         if (openAlertDialog.value){
+            val currentUri = uiState.value.photoList[pagerState.currentPage]
             ConfirmDeleteDialog(
                 onDismissClicked = {
                     openAlertDialog.value = false
                 },
-                onConfirmClicked = {}
+                onConfirmClicked = {
+                    //TODO This action crashes the app when trying to delete
+                    //galleryViewModel.requestTrashPhoto(currentUri){}
+                }
             )
         }
     }
