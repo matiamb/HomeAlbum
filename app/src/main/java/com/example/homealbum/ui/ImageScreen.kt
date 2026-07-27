@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -48,6 +49,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryUiState
 import com.example.homealbum.data.GalleryViewModel
@@ -104,8 +113,8 @@ fun ImageScreen(
         modifier = Modifier
     ) { paddingValues ->
         ImageRoll(
-            galleryViewModel = galleryViewModel,
-            initialPageIndex,
+//            galleryViewModel = galleryViewModel,
+//            initialPageIndex,
             uiState,
             pagerState,
             modifier = Modifier.padding(paddingValues)
@@ -129,8 +138,8 @@ fun ImageScreen(
 
 @Composable
 fun ImageRoll(
-    galleryViewModel: GalleryViewModel,
-    initialPageIndex: Int,
+//    galleryViewModel: GalleryViewModel,
+//    initialPageIndex: Int,
     uiState: State<GalleryUiState>,
     pagerState: PagerState,
     modifier: Modifier = Modifier
@@ -166,6 +175,8 @@ fun ImageRoll(
             }
     ) { page ->
         val uri = uiState.value.photoList[page]
+        val context = LocalContext.current
+        val isCurrentPage = pagerState.currentPage == page
 //        var scale by remember { mutableFloatStateOf(1f)}
 //        var offset by remember { mutableStateOf(Offset.Zero) }
 // Esto es para que haga una animacion cada vez que haya zoom
@@ -176,36 +187,42 @@ fun ImageRoll(
         LaunchedEffect(scale) {
                isZoomed = scale > 1f
         }
-        AsyncImage(
-            model = uri,
-            contentDescription = "",
-            modifier = Modifier
-                .fillMaxSize()
-                //aca le digo a la gpu que animaciones hacer en los cambio de escala
-                .graphicsLayer(
-                    scaleX = animatedScale,
-                    scaleY = animatedScale,
-                    translationX = animatedOffset.x,
-                    translationY = animatedOffset.y
-                )
-                //El pointer input es lo que detecta los toques en la pantalla, en este caso
-                //dentro uso el detect tap gestures para que detecte el double tap
-                //luego dentro tengo la logica para los limites de pantalla
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            if (scale > 1f) {
-                                scale = 1f
-                                offset = Offset.Zero
-                            } else {
-                                scale = 2f
-                                val targetOffsetX = (size.width / 2 - it.x) * scale
-                                val targetOffsetY = (size.height / 2 - it.y) * scale
-                                offset = Offset(targetOffsetX, targetOffsetY)
-                            }
-                        }
+        if (isVideoUri(context, uri)){
+            VideoPlayer(
+                uri = uri,
+                isPlaying = isCurrentPage
+            )
+        } else {
+            AsyncImage(
+                model = uri,
+                contentDescription = "",
+                modifier = Modifier
+                    .fillMaxSize()
+                    //aca le digo a la gpu que animaciones hacer en los cambio de escala
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = animatedOffset.x,
+                        translationY = animatedOffset.y
                     )
-                }
+                    //El pointer input es lo que detecta los toques en la pantalla, en este caso
+                    //dentro uso el detect tap gestures para que detecte el double tap
+                    //luego dentro tengo la logica para los limites de pantalla
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2f
+                                    val targetOffsetX = (size.width / 2 - it.x) * scale
+                                    val targetOffsetY = (size.height / 2 - it.y) * scale
+                                    offset = Offset(targetOffsetX, targetOffsetY)
+                                }
+                            }
+                        )
+                    }
 //                .pointerInput(Unit) {
 //                    //Esto no termina de funcionar, el pinch to zoom solo funciona si hago el doble tap antes
 //                    detectTransformGestures { _, pan, zoom, _ ->
@@ -218,8 +235,9 @@ fun ImageRoll(
 //                        )
 //                    }
 //                },
-            ,contentScale = ContentScale.Fit
-        )
+                ,contentScale = ContentScale.Fit
+            )
+        }
     }
 }
 
@@ -300,6 +318,56 @@ fun ConfirmDeleteDialog(
         }
     )
 }
+@Composable
+fun VideoPlayer(
+    uri: Uri,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+){
+    val context = LocalContext.current
+    val exoPlayer = remember(uri) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(uri))
+            prepare()
+            repeatMode = Player.REPEAT_MODE_ONE
+        }
+    }
+    val lifeCycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(isPlaying) {
+        if (isPlaying){
+            exoPlayer.play()
+        } else {
+            exoPlayer.pause()
+        }
+    }
+    DisposableEffect(Unit) {
+        val observer = LifecycleEventObserver{ _, event ->
+            when (event){
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    exoPlayer.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                }
+                else -> {}
+            }
+        }
+        lifeCycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifeCycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        modifier = modifier.fillMaxSize()
+    )
+}
 
 //@Preview(showSystemUi = true)
 //@Composable
@@ -311,6 +379,10 @@ fun ConfirmDeleteDialog(
 //)
 //}
 
+private fun isVideoUri(context: Context, uri: Uri): Boolean{
+    val mimeType = context.contentResolver.getType(uri)
+    return  mimeType?.startsWith("video/") == true
+}
 private fun sharePhoto(context: Context, uri: Uri){
     val shareIntent = Intent().apply {
         action = Intent.ACTION_SEND
