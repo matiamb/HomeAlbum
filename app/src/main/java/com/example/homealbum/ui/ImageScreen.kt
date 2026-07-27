@@ -340,7 +340,7 @@ fun VideoPlayer(
             exoPlayer.pause()
         }
     }
-    DisposableEffect(Unit) {
+    DisposableEffect(lifeCycleOwner, exoPlayer) {
         val observer = LifecycleEventObserver{ _, event ->
             when (event){
                 Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
