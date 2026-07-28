@@ -77,12 +77,11 @@ fun ImageScreen(
         pageCount = {uiState.value.photoList.size}
     )
     val context = LocalContext.current
-    //val currentUri = uiState.value.photoList[pagerState.currentPage]
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) {result ->
         if (result.resultCode == Activity.RESULT_OK){
-            val currentUri = uiState.value.photoList[pagerState.currentPage]
+            val currentUri = uiState.value.photoList[pagerState.currentPage].uri
             val photoCount = uiState.value.photoList.size
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
@@ -98,23 +97,21 @@ fun ImageScreen(
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
                 }else{
-                    val currentUri = uiState.value.photoList[pagerState.currentPage]
+                    val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                     galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
                         deleteLauncher.launch(intentSenderRequest)
                     }
                 }
                               },
             onSharedClicked = {
-                val currentUri = uiState.value.photoList[pagerState.currentPage]
+                val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 sharePhoto(context =context, uri = currentUri )
                               },
             onBackFabClicked = onBackFabClicked
         ) },
-        modifier = Modifier
+        modifier = modifier
     ) { paddingValues ->
         ImageRoll(
-//            galleryViewModel = galleryViewModel,
-//            initialPageIndex,
             uiState,
             pagerState,
             modifier = Modifier.padding(paddingValues)
@@ -138,17 +135,10 @@ fun ImageScreen(
 
 @Composable
 fun ImageRoll(
-//    galleryViewModel: GalleryViewModel,
-//    initialPageIndex: Int,
     uiState: State<GalleryUiState>,
     pagerState: PagerState,
     modifier: Modifier = Modifier
 ){
-//    val uiState = galleryViewModel.galleryUiState.collectAsState()
-//    val pagerState = rememberPagerState(
-//        initialPage = initialPageIndex,
-//        pageCount = {uiState.value.photoList.size}
-//    )
     var scale by remember { mutableFloatStateOf(1f)}
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isZoomed by remember { mutableStateOf(false) }
@@ -174,11 +164,8 @@ fun ImageRoll(
                 }
             }
     ) { page ->
-        val uri = uiState.value.photoList[page]
-        val context = LocalContext.current
+        val mediaItem = uiState.value.photoList[page]
         val isCurrentPage = pagerState.currentPage == page
-//        var scale by remember { mutableFloatStateOf(1f)}
-//        var offset by remember { mutableStateOf(Offset.Zero) }
 // Esto es para que haga una animacion cada vez que haya zoom
         val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
         val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
@@ -187,14 +174,14 @@ fun ImageRoll(
         LaunchedEffect(scale) {
                isZoomed = scale > 1f
         }
-        if (isVideoUri(context, uri)){
+        if (mediaItem.isVideo){
             VideoPlayer(
-                uri = uri,
+                uri = mediaItem.uri,
                 isPlaying = isCurrentPage
             )
         } else {
             AsyncImage(
-                model = uri,
+                model = mediaItem.uri,
                 contentDescription = "",
                 modifier = Modifier
                     .fillMaxSize()
@@ -223,18 +210,6 @@ fun ImageRoll(
                             }
                         )
                     }
-//                .pointerInput(Unit) {
-//                    //Esto no termina de funcionar, el pinch to zoom solo funciona si hago el doble tap antes
-//                    detectTransformGestures { _, pan, zoom, _ ->
-//                        scale = (scale * zoom).coerceIn(1f, 3f)
-//                        val maxPanX = (size.width * (scale - 1)) / 2
-//                        val maxPanY = (size.height * (scale - 1)) / 2
-//                        offset = Offset(
-//                            x = (offset.x + pan.x * scale).coerceIn(-maxPanX, maxPanX),
-//                            y = (offset.y + pan.y * scale).coerceIn(-maxPanY, maxPanY)
-//                        )
-//                    }
-//                },
                 ,contentScale = ContentScale.Fit
             )
         }
@@ -270,7 +245,8 @@ fun BottomToolbar(
                     contentDescription = "Back"
                 )
             }
-        }
+        },
+        modifier = modifier
     )
 }
 
@@ -315,7 +291,8 @@ fun ConfirmDeleteDialog(
                 imageVector = Icons.Filled.Warning,
                 contentDescription = ""
             )
-        }
+        },
+        modifier = modifier
     )
 }
 @Composable
@@ -379,10 +356,6 @@ fun VideoPlayer(
 //)
 //}
 
-private fun isVideoUri(context: Context, uri: Uri): Boolean{
-    val mimeType = context.contentResolver.getType(uri)
-    return  mimeType?.startsWith("video/") == true
-}
 private fun sharePhoto(context: Context, uri: Uri){
     val shareIntent = Intent().apply {
         action = Intent.ACTION_SEND

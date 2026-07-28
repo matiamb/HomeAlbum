@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -22,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,10 +42,10 @@ import com.example.homealbum.data.GalleryViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
@@ -56,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryViewModelFactory
+import com.example.homealbum.data.MediaItem
 import com.example.homealbum.model.PhotoRepository
 
 enum class AppScreens{
@@ -126,10 +127,6 @@ fun GalleryScreen(
         )}
     ) { innerPadding ->
         val context = LocalContext.current
-//        val photoRepository = PhotoRepository(context)
-//
-//        val factory = GalleryViewModelFactory(photoRepository)
-//        val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
 
         val permissionToRequest = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
             arrayOf(
@@ -154,12 +151,6 @@ fun GalleryScreen(
         }
         val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
-//            onResult = {isGranted ->
-//                hasPermission = isGranted
-//                if(isGranted){
-//                    galleryViewModel.loadPhotos()
-//                }
-//            }
         ){ permissionMap ->
             hasPermission = permissionMap.values.all { isGranted -> isGranted }
         }
@@ -176,7 +167,6 @@ fun GalleryScreen(
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
                 onImageClicked = onImageClicked,
-                context = context,
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
@@ -199,7 +189,6 @@ fun GalleryScreen(
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
     onImageClicked: (Int) -> Unit,
-    context: Context,
     modifier: Modifier = Modifier
 ){
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
@@ -213,16 +202,12 @@ private fun GalleryGrid(
         itemsIndexed(
             items = galleryUiState.value.photoList,
             key = {_, uri -> uri.toString()}
-        ){ index, uri ->
-            val thumbnail: Bitmap = context.contentResolver.loadThumbnail(
-                uri, Size(640, 480), null
-            )
-            AsyncImage(
-                model = thumbnail,
-                contentDescription = "",
-                modifier = Modifier.height(150.dp).clickable(true, onClick = {onImageClicked(index)}),
-                filterQuality = FilterQuality.Low,
-                contentScale = ContentScale.Crop
+        ){ index, item ->
+            ImageThumbnail(
+                mediaItem = item,
+                galleryViewModel = galleryViewModel,
+                index = index,
+                onImageClicked = onImageClicked
             )
         }
     }
@@ -267,6 +252,40 @@ fun RequestPermissionFab(
             text = "Request Permission",
             modifier = Modifier.padding(8.dp)
         )
+    }
+}
+@RequiresApi(Build.VERSION_CODES.Q)
+@Composable
+fun ImageThumbnail(
+    mediaItem: MediaItem,
+    galleryViewModel: GalleryViewModel,
+    index: Int,
+    onImageClicked: (Int) -> Unit,
+    modifier: Modifier = Modifier
+){
+    /**
+     * Here the thumbnail value is initiated using produceState which makes this code run
+     * inside a coroutine, so we can call the getThumbnail method from the viewModel
+     */
+    val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
+        value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+    ){
+        AsyncImage(
+            model = thumbnail,
+            contentDescription = "",
+            modifier = Modifier.height(150.dp).clickable(true, onClick = {onImageClicked(index)}),
+            contentScale = ContentScale.Crop
+        )
+        if (mediaItem.isVideo){
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = ""
+            )
+        }
     }
 }
 
