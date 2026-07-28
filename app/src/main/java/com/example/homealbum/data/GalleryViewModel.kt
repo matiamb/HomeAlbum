@@ -1,6 +1,7 @@
 package com.example.homealbum.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
@@ -25,6 +26,22 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
         }
     }
 
+    /**
+     * This is just a passthrough function to connect the UI with the repo. Since the repo function
+     * is a suspend, this function needs to be suspend as well
+     */
+    suspend fun getThumbnail(
+        mediaItem: MediaItem,
+        width: Int,
+        height: Int
+    ): Bitmap?{
+        return photosRepo.getThumbnail(
+            uri = mediaItem.uri,
+            width = width,
+            height = height
+        )
+    }
+
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
             val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
@@ -38,7 +55,7 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
 
     fun removeThrashedPhotoFromUi(uri: Uri){
         _galleryUiState.update { state ->
-            state.copy(photoList = state.photoList.filter { it != uri })
+            state.copy(photoList = state.photoList.filter { it.uri != uri })
         }
     }
 

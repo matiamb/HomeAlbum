@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -48,6 +49,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.homealbum.data.GalleryUiState
 import com.example.homealbum.data.GalleryViewModel
@@ -68,12 +77,11 @@ fun ImageScreen(
         pageCount = {uiState.value.photoList.size}
     )
     val context = LocalContext.current
-    //val currentUri = uiState.value.photoList[pagerState.currentPage]
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) {result ->
         if (result.resultCode == Activity.RESULT_OK){
-            val currentUri = uiState.value.photoList[pagerState.currentPage]
+            val currentUri = uiState.value.photoList[pagerState.currentPage].uri
             val photoCount = uiState.value.photoList.size
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
@@ -88,35 +96,36 @@ fun ImageScreen(
             onDeleteClicked = {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
-                    //TODO add functionality to this delete button
                 }else{
-                    val currentUri = uiState.value.photoList[pagerState.currentPage]
+                    val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                     galleryViewModel.requestTrashPhoto(currentUri){ intentSenderRequest ->
                         deleteLauncher.launch(intentSenderRequest)
                     }
                 }
                               },
             onSharedClicked = {
-                val currentUri = uiState.value.photoList[pagerState.currentPage]
+                val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 sharePhoto(context =context, uri = currentUri )
                               },
             onBackFabClicked = onBackFabClicked
         ) },
-        modifier = Modifier
+        modifier = modifier
     ) { paddingValues ->
         ImageRoll(
-            galleryViewModel = galleryViewModel,
-            initialPageIndex,
             uiState,
             pagerState,
             modifier = Modifier.padding(paddingValues)
         )
         if (openAlertDialog.value){
+            val currentUri = uiState.value.photoList[pagerState.currentPage]
             ConfirmDeleteDialog(
                 onDismissClicked = {
                     openAlertDialog.value = false
                 },
-                onConfirmClicked = {}
+                onConfirmClicked = {
+                    //TODO This action crashes the app when trying to delete
+                    //galleryViewModel.requestTrashPhoto(currentUri){}
+                }
             )
         }
     }
@@ -126,17 +135,10 @@ fun ImageScreen(
 
 @Composable
 fun ImageRoll(
-    galleryViewModel: GalleryViewModel,
-    initialPageIndex: Int,
     uiState: State<GalleryUiState>,
     pagerState: PagerState,
     modifier: Modifier = Modifier
 ){
-//    val uiState = galleryViewModel.galleryUiState.collectAsState()
-//    val pagerState = rememberPagerState(
-//        initialPage = initialPageIndex,
-//        pageCount = {uiState.value.photoList.size}
-//    )
     var scale by remember { mutableFloatStateOf(1f)}
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isZoomed by remember { mutableStateOf(false) }
@@ -162,9 +164,8 @@ fun ImageRoll(
                 }
             }
     ) { page ->
-        val uri = uiState.value.photoList[page]
-//        var scale by remember { mutableFloatStateOf(1f)}
-//        var offset by remember { mutableStateOf(Offset.Zero) }
+        val mediaItem = uiState.value.photoList[page]
+        val isCurrentPage = pagerState.currentPage == page
 // Esto es para que haga una animacion cada vez que haya zoom
         val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
         val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
@@ -173,50 +174,45 @@ fun ImageRoll(
         LaunchedEffect(scale) {
                isZoomed = scale > 1f
         }
-        AsyncImage(
-            model = uri,
-            contentDescription = "",
-            modifier = Modifier
-                .fillMaxSize()
-                //aca le digo a la gpu que animaciones hacer en los cambio de escala
-                .graphicsLayer(
-                    scaleX = animatedScale,
-                    scaleY = animatedScale,
-                    translationX = animatedOffset.x,
-                    translationY = animatedOffset.y
-                )
-                //El pointer input es lo que detecta los toques en la pantalla, en este caso
-                //dentro uso el detect tap gestures para que detecte el double tap
-                //luego dentro tengo la logica para los limites de pantalla
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            if (scale > 1f) {
-                                scale = 1f
-                                offset = Offset.Zero
-                            } else {
-                                scale = 2f
-                                val targetOffsetX = (size.width / 2 - it.x) * scale
-                                val targetOffsetY = (size.height / 2 - it.y) * scale
-                                offset = Offset(targetOffsetX, targetOffsetY)
-                            }
-                        }
+        if (mediaItem.isVideo){
+            VideoPlayer(
+                uri = mediaItem.uri,
+                isPlaying = isCurrentPage
+            )
+        } else {
+            AsyncImage(
+                model = mediaItem.uri,
+                contentDescription = "",
+                modifier = Modifier
+                    .fillMaxSize()
+                    //aca le digo a la gpu que animaciones hacer en los cambio de escala
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = animatedOffset.x,
+                        translationY = animatedOffset.y
                     )
-                }
-//                .pointerInput(Unit) {
-//                    //Esto no termina de funcionar, el pinch to zoom solo funciona si hago el doble tap antes
-//                    detectTransformGestures { _, pan, zoom, _ ->
-//                        scale = (scale * zoom).coerceIn(1f, 3f)
-//                        val maxPanX = (size.width * (scale - 1)) / 2
-//                        val maxPanY = (size.height * (scale - 1)) / 2
-//                        offset = Offset(
-//                            x = (offset.x + pan.x * scale).coerceIn(-maxPanX, maxPanX),
-//                            y = (offset.y + pan.y * scale).coerceIn(-maxPanY, maxPanY)
-//                        )
-//                    }
-//                },
-            ,contentScale = ContentScale.Fit
-        )
+                    //El pointer input es lo que detecta los toques en la pantalla, en este caso
+                    //dentro uso el detect tap gestures para que detecte el double tap
+                    //luego dentro tengo la logica para los limites de pantalla
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2f
+                                    val targetOffsetX = (size.width / 2 - it.x) * scale
+                                    val targetOffsetY = (size.height / 2 - it.y) * scale
+                                    offset = Offset(targetOffsetX, targetOffsetY)
+                                }
+                            }
+                        )
+                    }
+                ,contentScale = ContentScale.Fit
+            )
+        }
     }
 }
 
@@ -249,7 +245,8 @@ fun BottomToolbar(
                     contentDescription = "Back"
                 )
             }
-        }
+        },
+        modifier = modifier
     )
 }
 
@@ -294,7 +291,58 @@ fun ConfirmDeleteDialog(
                 imageVector = Icons.Filled.Warning,
                 contentDescription = ""
             )
+        },
+        modifier = modifier
+    )
+}
+@Composable
+fun VideoPlayer(
+    uri: Uri,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+){
+    val context = LocalContext.current
+    val exoPlayer = remember(uri) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(uri))
+            prepare()
+            repeatMode = Player.REPEAT_MODE_ONE
         }
+    }
+    val lifeCycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(isPlaying) {
+        if (isPlaying){
+            exoPlayer.play()
+        } else {
+            exoPlayer.pause()
+        }
+    }
+    DisposableEffect(lifeCycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver{ _, event ->
+            when (event){
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    exoPlayer.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                }
+                else -> {}
+            }
+        }
+        lifeCycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifeCycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        modifier = modifier.fillMaxSize()
     )
 }
 
