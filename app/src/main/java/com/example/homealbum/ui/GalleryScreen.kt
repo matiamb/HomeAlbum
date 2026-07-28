@@ -155,7 +155,7 @@ fun GalleryScreen(
             hasPermission = permissionMap.values.all { isGranted -> isGranted }
         }
 
-        LaunchedEffect(Unit) {
+        LaunchedEffect(hasPermission) {
             if (!hasPermission){
                 permissionLauncher.launch(permissionToRequest)
             } else {
