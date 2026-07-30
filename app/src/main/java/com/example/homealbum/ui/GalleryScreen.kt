@@ -38,7 +38,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
-import com.example.homealbum.data.GalleryViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,63 +54,61 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
-import com.example.homealbum.data.GalleryViewModelFactory
-import com.example.homealbum.data.MediaItem
-import com.example.homealbum.model.PhotoRepository
+import com.example.homealbum.model.MediaItem
+import com.example.homealbum.data.PhotoRepository
 
-enum class AppScreens{
-    GALLERY_START,
-    SETTINGS,
-    IMAGE_VIEW
-}
+//enum class AppScreens{
+//    GALLERY_START,
+//    SETTINGS,
+//    IMAGE_VIEW
+//}
 
-@RequiresApi(Build.VERSION_CODES.Q)
-@Composable
-fun HomeAlbumApp(
-    navController: NavHostController = rememberNavController()
-){
-    val context = LocalContext.current
-    val photoRepository = PhotoRepository(context)
-
-    val factory = GalleryViewModelFactory(photoRepository)
-    val galleryViewModel: GalleryViewModel = viewModel(factory = factory)
-    NavHost(
-        navController = navController,
-        startDestination = AppScreens.GALLERY_START.name,
-        modifier = Modifier.fillMaxSize()
-    ){
-        composable(
-            route = AppScreens.GALLERY_START.name
-        ){
-            GalleryScreen(
-                galleryViewModel = galleryViewModel,
-                onSettingsFabClicked = {
-                    navController.navigate(AppScreens.SETTINGS.name)
-                },
-                onImageClicked = { index ->
-                    navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
-                }
-            )
-        }
-        composable(
-            route = AppScreens.SETTINGS.name
-        ){
-            SettingsScreen()
-        }
-        composable(
-            route = "${AppScreens.IMAGE_VIEW.name}/{index}",
-            arguments = listOf(navArgument("index") { type = NavType.IntType })
-        ) { navBackStackEntry ->
-            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
-            ImageScreen(
-                galleryViewModel = galleryViewModel,
-                initialPageIndex = index,
-                onBackFabClicked = {navController.popBackStack()},
-                onLastPhotoDeleted = {navController.popBackStack()}
-                )
-        }
-    }
-}
+//@RequiresApi(Build.VERSION_CODES.Q)
+//@Composable
+//fun HomeAlbumApp(
+//    navController: NavHostController = rememberNavController()
+//){
+////    val context = LocalContext.current
+////    val photoRepository = PhotoRepository(context)
+//
+//    val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
+//    NavHost(
+//        navController = navController,
+//        startDestination = AppScreens.GALLERY_START.name,
+//        modifier = Modifier.fillMaxSize()
+//    ){
+//        composable(
+//            route = AppScreens.GALLERY_START.name
+//        ){
+//            GalleryScreen(
+//                galleryViewModel = galleryViewModel,
+//                onSettingsFabClicked = {
+//                    navController.navigate(AppScreens.SETTINGS.name)
+//                },
+//                onImageClicked = { index ->
+//                    navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
+//                }
+//            )
+//        }
+//        composable(
+//            route = AppScreens.SETTINGS.name
+//        ){
+//            SettingsScreen()
+//        }
+//        composable(
+//            route = "${AppScreens.IMAGE_VIEW.name}/{index}",
+//            arguments = listOf(navArgument("index") { type = NavType.IntType })
+//        ) { navBackStackEntry ->
+//            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
+//            ImageScreen(
+//                galleryViewModel = galleryViewModel,
+//                initialPageIndex = index,
+//                onBackFabClicked = {navController.popBackStack()},
+//                onLastPhotoDeleted = {navController.popBackStack()}
+//                )
+//        }
+//    }
+//}
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun GalleryScreen(

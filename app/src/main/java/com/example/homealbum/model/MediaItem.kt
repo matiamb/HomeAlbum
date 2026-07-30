@@ -1,4 +1,4 @@
-package com.example.homealbum.data
+package com.example.homealbum.model
 
 import android.net.Uri
 

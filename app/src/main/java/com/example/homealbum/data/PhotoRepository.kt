@@ -1,4 +1,4 @@
-package com.example.homealbum.model
+package com.example.homealbum.data
 
 import android.content.ContentUris
 import android.content.Context
@@ -8,7 +8,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Size
 import androidx.activity.result.IntentSenderRequest
-import com.example.homealbum.data.MediaItem
+import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,10 +17,11 @@ class PhotoRepository(private val context: Context) {
      * This method will request android to retrieve the image and videos it has from
      * the Camera folder, attempting to grab only the images taken by the user with the camera.
      */
+
     suspend fun getLocalPhotos(): List<MediaItem> = withContext(Dispatchers.IO) {
         val photoList = mutableListOf<MediaItem>()
 
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ){
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
             MediaStore.Files.getContentUri("external")
@@ -52,22 +53,30 @@ class PhotoRepository(private val context: Context) {
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
                 val mediaType = cursor.getInt(typeColumn)
-                val mediaItem: MediaItem = if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
-                    MediaItem(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                    , isVideo = false)
-                } else {
-                    MediaItem(
-                        uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id),
-                        isVideo = true
-                    )
-                }
+                val mediaItem: MediaItem =
+                    if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
+                        MediaItem(
+                            ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            ), isVideo = false
+                        )
+                    } else {
+                        MediaItem(
+                            uri = ContentUris.withAppendedId(
+                                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            ),
+                            isVideo = true
+                        )
+                    }
 
                 photoList.add(mediaItem)
             }
         }
         return@withContext photoList
     }
-    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO){
+    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -79,7 +88,7 @@ class PhotoRepository(private val context: Context) {
             IntentSenderRequest.Builder(pendingIntent.intentSender).build()
         } else {
             try {
-                contentResolver.delete(uri,null,null)
+                contentResolver.delete(uri, null, null)
             } catch (e: SecurityException) {
                 throw e
             }
@@ -97,11 +106,11 @@ class PhotoRepository(private val context: Context) {
         uri: Uri,
         width: Int,
         height: Int
-    ): Bitmap? = withContext(Dispatchers.IO){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+    ): Bitmap? = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
-            context.contentResolver.loadThumbnail(uri, Size(width, height), null)
-            } catch (e: Exception){
+                context.contentResolver.loadThumbnail(uri, Size(width, height), null)
+            } catch (e: Exception) {
                 null
             }
         } else {
