@@ -58,8 +58,6 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import com.example.homealbum.data.GalleryUiState
-import com.example.homealbum.data.GalleryViewModel
 
 @Composable
 fun ImageScreen(

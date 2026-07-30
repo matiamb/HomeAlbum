@@ -1,19 +1,22 @@
-package com.example.homealbum.data
+package com.example.homealbum.ui
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.homealbum.data.ImageDataSource.imageList
-import com.example.homealbum.model.PhotoRepository
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.homealbum.HomeAlbumApplication
+import com.example.homealbum.data.PhotoRepository
+import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 
 class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
 
@@ -28,7 +31,7 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
 
     /**
      * This is just a passthrough function to connect the UI with the repo. Since the repo function
-     * is a suspend, this function needs to be suspend as well
+     * is a suspend, this function needs to be suspended as well
      */
     suspend fun getThumbnail(
         mediaItem: MediaItem,
@@ -59,16 +62,31 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
         }
     }
 
-    init {
-        //loadPhotos()
-    }
-}
-class GalleryViewModelFactory(private val photosRepo: PhotoRepository) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(GalleryViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return GalleryViewModel(photosRepo) as T
+//    init {
+//        viewModelScope.launch {
+//            photosRepo.photoList.collect { photoList ->
+//                _galleryUiState.update { it.copy(photoList = photoList) }
+//            }
+//        }
+//
+//    }
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
+                val photoRepository = application.container.photoRepository
+                GalleryViewModel(photoRepository)
+            }
         }
-        throw IllegalArgumentException("Clase ViewModel desconocida")
     }
 }
+//class GalleryViewModelFactory(private val photosRepo: PhotoRepository) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(GalleryViewModel::class.java)) {
+//            @Suppress("UNCHECKED_CAST")
+//            return GalleryViewModel(photosRepo) as T
+//        }
+//        throw IllegalArgumentException("Clase ViewModel desconocida")
+//    }
+
+
