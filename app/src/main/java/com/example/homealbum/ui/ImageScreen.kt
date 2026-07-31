@@ -21,6 +21,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -105,7 +106,11 @@ fun ImageScreen(
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 sharePhoto(context =context, uri = currentUri )
                               },
-            onBackFabClicked = onBackFabClicked
+            onBackFabClicked = onBackFabClicked,
+            onUploadClicked = {
+                val currentUri = uiState.value.photoList[pagerState.currentPage].uri
+                galleryViewModel.uploadPhoto(currentUri)
+            }
         ) },
         modifier = modifier
     ) { paddingValues ->
@@ -219,6 +224,7 @@ fun BottomToolbar(
     onDeleteClicked: () -> Unit,
     onSharedClicked: () -> Unit,
     onBackFabClicked: () -> Unit,
+    onUploadClicked: () -> Unit,
     modifier: Modifier = Modifier
 ){
     BottomAppBar(
@@ -233,6 +239,12 @@ fun BottomToolbar(
                 Icon(
                     Icons.Filled.Share,
                     contentDescription = "Share"
+                )
+            }
+            IconButton(onClick = onUploadClicked) {
+                Icon(
+                    Icons.Filled.KeyboardArrowUp,
+                    contentDescription = "Upload"
                 )
             }
         },
@@ -371,7 +383,8 @@ private fun BottomToolbarPreview(){
     BottomToolbar(
         onDeleteClicked = {},
         onSharedClicked = {},
-        onBackFabClicked = {}
+        onBackFabClicked = {},
+        onUploadClicked = {}
     )
 }
 

@@ -55,6 +55,10 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.logging.interceptor)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

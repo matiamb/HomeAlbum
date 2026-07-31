@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
-import com.example.homealbum.data.PhotoRepository
+import com.example.homealbum.data.OfflinePhotoRepository
 import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +17,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import com.example.homealbum.data.NetworkPhotoRepository
 
-class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
+class GalleryViewModel(
+    private val photosRepo: OfflinePhotoRepository,
+    private val networkPhotoRepository: NetworkPhotoRepository
+) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
     val galleryUiState: StateFlow<GalleryUiState> = _galleryUiState.asStateFlow()
@@ -61,6 +65,14 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
             state.copy(photoList = state.photoList.filter { it.uri != uri })
         }
     }
+    fun uploadPhoto(
+        uri: Uri
+    ){
+        viewModelScope.launch {
+            networkPhotoRepository.uploadPhoto(uri)
+        }
+
+    }
 
 //    init {
 //        viewModelScope.launch {
@@ -74,8 +86,9 @@ class GalleryViewModel(private val photosRepo: PhotoRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
-                val photoRepository = application.container.photoRepository
-                GalleryViewModel(photoRepository)
+                val photoRepository = application.container.offlinePhotoRepository
+                val networkPhotoRepository = application.container.networkPhotoRepository
+                GalleryViewModel(photoRepository, networkPhotoRepository)
             }
         }
     }
