@@ -15,7 +15,7 @@ class DefaultAppContainer(context: Context) : AppContainer{
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
-            .baseUrl("http//localhost")
+            .baseUrl("http://localhost")
             .build()
     }
     private val retrofitService: ServerApiService by lazy {

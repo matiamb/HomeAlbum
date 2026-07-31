@@ -109,7 +109,7 @@ fun ImageScreen(
             onBackFabClicked = onBackFabClicked,
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
-                galleryViewModel.uploadPhoto(currentUri)
+                //galleryViewModel.uploadPhoto(currentUri)
             }
         ) },
         modifier = modifier
