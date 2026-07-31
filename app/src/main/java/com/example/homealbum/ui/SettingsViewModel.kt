@@ -20,14 +20,9 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = UserSettings("", "", false)
     )
-    fun saveServerIp(ip: String){
+    fun saveServerSettings(ip: String, folderName: String){
         viewModelScope.launch {
-            settingsRepository.saveServerIp(ip)
-        }
-    }
-    fun saveServerFolderName(folderName: String){
-        viewModelScope.launch {
-            settingsRepository.saveServerFolderName(folderName)
+            settingsRepository.saveServerSettings(ip, folderName)
         }
     }
     fun saveBackupEnabled(isBackupEnabled: Boolean){

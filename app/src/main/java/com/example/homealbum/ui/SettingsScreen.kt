@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -16,7 +14,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -33,9 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -66,9 +62,9 @@ fun SettingItemCard(
     modifier: Modifier = Modifier
 ) {
     val settingsState = settingsViewModel.uiState.collectAsState()
-    var textIp by remember { mutableStateOf("") }
-    var textFolderName by remember { mutableStateOf("") }
-
+    var textIp by remember(settingsState.value.serverIp) { mutableStateOf(settingsState.value.serverIp) }
+    var textFolderName by remember(settingsState.value.serverFolderName) { mutableStateOf(settingsState.value.serverFolderName) }
+    val context = LocalContext.current
 //    var isEnabled by remember { mutableStateOf(false) }
     ElevatedCard(
         modifier = modifier
@@ -143,8 +139,12 @@ fun SettingItemCard(
             )
             Button(
                 onClick = {
-                    settingsViewModel.saveServerIp(textIp)
-                    settingsViewModel.saveServerFolderName(textFolderName)
+                    settingsViewModel.saveServerSettings(textIp, textFolderName)
+                    Toast.makeText(
+                        context,
+                        "Settings saved!",
+                        Toast.LENGTH_LONG
+                    ).show()
                 },
                 enabled = settingsState.value.isBackupEnabled
             ) {

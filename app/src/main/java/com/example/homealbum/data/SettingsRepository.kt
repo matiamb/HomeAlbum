@@ -10,8 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 interface SettingsRepository {
-    suspend fun saveServerIp(ip: String)
-    suspend fun saveServerFolderName(folderName: String)
+    suspend fun saveServerSettings(ip: String, folderName: String)
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
 }
 
@@ -32,14 +31,9 @@ class OfflineSettingsRepository(
         )
     }
 
-    override suspend fun saveServerIp(ip: String) {
+    override suspend fun saveServerSettings(ip: String, folderName: String) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.SERVER_IP] = ip
-        }
-    }
-
-    override suspend fun saveServerFolderName(folderName: String) {
-        dataStore.edit { preferences ->
             preferences[PreferencesKeys.FOLDER_NAME] = folderName
         }
     }
