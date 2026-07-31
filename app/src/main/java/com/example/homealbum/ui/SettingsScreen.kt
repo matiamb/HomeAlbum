@@ -30,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
@@ -65,6 +67,7 @@ fun SettingItemCard(
     var textIp by remember(settingsState.value.serverIp) { mutableStateOf(settingsState.value.serverIp) }
     var textFolderName by remember(settingsState.value.serverFolderName) { mutableStateOf(settingsState.value.serverFolderName) }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 //    var isEnabled by remember { mutableStateOf(false) }
     ElevatedCard(
         modifier = modifier
@@ -98,7 +101,12 @@ fun SettingItemCard(
                 )
                 Switch(
                     checked = settingsState.value.isBackupEnabled,
-                    onCheckedChange = {settingsViewModel.saveBackupEnabled(it)},
+                    onCheckedChange = {
+                        haptic.performHapticFeedback(
+                            hapticFeedbackType = HapticFeedbackType.ToggleOn
+                        )
+                        settingsViewModel.saveBackupEnabled(it)
+                                      },
                     thumbContent = {
                         if (settingsState.value.isBackupEnabled){
                             Icon(
