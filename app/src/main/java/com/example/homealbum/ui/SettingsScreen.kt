@@ -1,5 +1,6 @@
 package com.example.homealbum.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,11 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -22,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,32 +34,52 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SettingsScreen(){
+fun SettingsScreen(
+    settingsViewModel: SettingsViewModel,
+    onBackFabPressed: () -> Unit
+){
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(onClick = onBackFabPressed) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        }
     ) {innerPadding ->
         SettingItemCard(
+            settingsViewModel = settingsViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
 }
 @Composable
 fun SettingItemCard(
+    settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
+    val settingsState = settingsViewModel.uiState.collectAsState()
     var textIp by remember { mutableStateOf("") }
     var textFolderName by remember { mutableStateOf("") }
-    var isEnabled by remember { mutableStateOf(false) }
+
+//    var isEnabled by remember { mutableStateOf(false) }
     ElevatedCard(
-        modifier = modifier.fillMaxWidth().padding(32.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
         elevation = CardDefaults.cardElevation(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(8.dp).fillMaxSize(),
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -76,10 +101,10 @@ fun SettingItemCard(
                     text = "Enable local server backup?"
                 )
                 Switch(
-                    checked = isEnabled,
-                    onCheckedChange = {isEnabled = !isEnabled},
+                    checked = settingsState.value.isBackupEnabled,
+                    onCheckedChange = {settingsViewModel.saveBackupEnabled(it)},
                     thumbContent = {
-                        if (isEnabled){
+                        if (settingsState.value.isBackupEnabled){
                             Icon(
                                 Icons.Filled.Check,
                                 contentDescription = ""
@@ -102,7 +127,7 @@ fun SettingItemCard(
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                enabled = isEnabled,
+                enabled = settingsState.value.isBackupEnabled,
                 maxLines = 1
             )
             TextField(
@@ -113,15 +138,29 @@ fun SettingItemCard(
                         text = "Please enter the folder name"
                     )
                 },
-                enabled = isEnabled,
+                enabled = settingsState.value.isBackupEnabled,
                 maxLines = 1
             )
+            Button(
+                onClick = {
+                    settingsViewModel.saveServerIp(textIp)
+                    settingsViewModel.saveServerFolderName(textFolderName)
+                },
+                enabled = settingsState.value.isBackupEnabled
+            ) {
+                Text(
+                    text = "Save"
+                )
+            }
         }
     }
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun SettingItemCardPreview(){
-    SettingItemCard()
-}
+//@Preview(showSystemUi = true)
+//@Composable
+//fun SettingItemCardPreview(){
+//    SettingsScreen(
+//        settingsViewModel = ,
+//        onBackFabPressed = {}
+//    )
+//}

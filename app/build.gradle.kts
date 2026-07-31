@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
