@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,7 +21,9 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
@@ -41,7 +44,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -59,6 +64,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 
 @Composable
 fun ImageScreen(
@@ -89,6 +95,7 @@ fun ImageScreen(
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
             }
         }
+
     }
     Scaffold(
         bottomBar = { BottomToolbar(
@@ -107,6 +114,10 @@ fun ImageScreen(
                 sharePhoto(context =context, uri = currentUri )
                               },
             onBackFabClicked = onBackFabClicked,
+            checkPhotoIsUploaded = {
+                val currentUri = uiState.value.photoList[pagerState.currentPage].uri
+                galleryViewModel.checkIfPhotoExists(currentUri)
+            },
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 //galleryViewModel.uploadPhoto(currentUri)
@@ -114,6 +125,12 @@ fun ImageScreen(
         ) },
         modifier = modifier
     ) { paddingValues ->
+
+        LaunchedEffect(Unit) {
+            galleryViewModel.toastMessage.collect { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        }
         ImageRoll(
             uiState,
             pagerState,
@@ -225,6 +242,7 @@ fun BottomToolbar(
     onSharedClicked: () -> Unit,
     onBackFabClicked: () -> Unit,
     onUploadClicked: () -> Unit,
+    checkPhotoIsUploaded: () -> Unit,
     modifier: Modifier = Modifier
 ){
     BottomAppBar(
@@ -245,6 +263,12 @@ fun BottomToolbar(
                 Icon(
                     Icons.Filled.KeyboardArrowUp,
                     contentDescription = "Upload"
+                )
+            }
+            IconButton(onClick = checkPhotoIsUploaded) {
+                Icon(
+                    Icons.Filled.Info,
+                    ""
                 )
             }
         },
@@ -384,7 +408,8 @@ private fun BottomToolbarPreview(){
         onDeleteClicked = {},
         onSharedClicked = {},
         onBackFabClicked = {},
-        onUploadClicked = {}
+        onUploadClicked = {},
+        checkPhotoIsUploaded = {}
     )
 }
 

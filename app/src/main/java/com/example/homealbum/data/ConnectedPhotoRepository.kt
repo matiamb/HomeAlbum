@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.example.homealbum.network.ServerApiService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -13,9 +15,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 import okio.source
 import retrofit2.Response
+import java.security.MessageDigest
 
 interface ConnectedPhotoRepository {
-    suspend fun checkIfPhotoExist(fileHash: String): Response<Boolean>
+    suspend fun checkIfPhotoExist(uri: Uri): Response<Unit>
     suspend fun uploadPhoto(
         fileUri: Uri
     )
@@ -26,8 +29,13 @@ class NetworkPhotoRepository(
     private val offlineSettingsRepository: OfflineSettingsRepository,
     private val context: Context
 ) : ConnectedPhotoRepository{
-    override suspend fun checkIfPhotoExist(fileHash: String): Response<Boolean> {
-        return serverApiService.checkIfPhotoExist(fileHash)
+
+    override suspend fun checkIfPhotoExist(uri: Uri): Response<Unit> {
+        val fileHash = getFileHash(uri)
+        val settings = offlineSettingsRepository.userSettingsFlow.first()
+        val serverIp = settings.serverIp
+        val dynamicUrl = serverIp.trimEnd('/')
+        return serverApiService.checkIfPhotoExist(dynamicUrl, fileHash)
     }
 
     override suspend fun uploadPhoto(
@@ -90,6 +98,26 @@ class NetworkPhotoRepository(
             }
         }
         return null
+    }
+    private suspend fun getFileHash(uri: Uri): String?{
+        //TODO check what hash algorithm the server uses
+        return withContext(Dispatchers.IO){
+            try {
+                val digest = MessageDigest.getInstance("SHA-256")
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val buffer = ByteArray(8 * 1024)
+                    var bytesRead: Int
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1){
+                        digest.update(buffer, 0, bytesRead)
+                    }
+                }
+                val hashBytes = digest.digest()
+                hashBytes.joinToString(""){"%02x".format(it)}
+            } catch (e: Exception){
+                e.printStackTrace()
+                null
+            }
+        }
     }
 
 }

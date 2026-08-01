@@ -11,10 +11,11 @@ import retrofit2.http.Query
 import retrofit2.http.Url
 
 interface ServerApiService{
-    @GET("llamada/ami/api")
+    @GET
     suspend fun checkIfPhotoExist(
-        @Query("hash") fileHash: String
-    ): Response<Boolean>
+        @Url dynamicUrl: String,
+        @Query("hash") fileHash: String?
+    ): Response<Unit>
     @Multipart
     @POST
     suspend fun uploadPhoto(

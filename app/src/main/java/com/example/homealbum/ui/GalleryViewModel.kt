@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import com.example.homealbum.data.NetworkPhotoRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class GalleryViewModel(
     private val photosRepo: OfflinePhotoRepository,
@@ -26,6 +28,9 @@ class GalleryViewModel(
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
     val galleryUiState: StateFlow<GalleryUiState> = _galleryUiState.asStateFlow()
+
+    private val _toastMessage = MutableSharedFlow<String>()
+    val toastMessage = _toastMessage.asSharedFlow()
 
     fun loadPhotos(){
         viewModelScope.launch {
@@ -71,7 +76,21 @@ class GalleryViewModel(
         viewModelScope.launch {
             networkPhotoRepository.uploadPhoto(uri)
         }
-
+    }
+   fun checkIfPhotoExists(uri: Uri){
+       viewModelScope.launch {
+           //val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+           var message: String
+//           if (serverResponse.code() == 200){
+//               message = "Photo exist on the server"
+//               _toastMessage.emit(message)
+//           } else {
+//               message = "Photo not present on server"
+//               _toastMessage.emit(message)
+//           }
+           message = "Photo not present on server"
+           _toastMessage.emit(message)
+       }
     }
 
 //    init {
