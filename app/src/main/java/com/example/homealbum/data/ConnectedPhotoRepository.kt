@@ -19,9 +19,7 @@ import java.security.MessageDigest
 
 interface ConnectedPhotoRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<Unit>
-    suspend fun uploadPhoto(
-        fileUri: Uri
-    )
+    suspend fun uploadPhoto(fileUri: Uri): Response<Unit>
 }
 
 class NetworkPhotoRepository(
@@ -40,7 +38,7 @@ class NetworkPhotoRepository(
 
     override suspend fun uploadPhoto(
         fileUri: Uri
-    ) {
+    ): Response<Unit> {
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
@@ -68,7 +66,7 @@ class NetworkPhotoRepository(
         }
         val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)//the file string has to be the same as the one the server expects
 
-        serverApiService.uploadPhoto(
+        return serverApiService.uploadPhoto(
             file = filePart,
             savedUrl = endpoint,
             mimeType = mimeTypeRequestBody,

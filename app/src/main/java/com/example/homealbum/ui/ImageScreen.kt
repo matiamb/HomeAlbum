@@ -95,7 +95,12 @@ fun ImageScreen(
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
             }
         }
-
+    }
+    LaunchedEffect(Unit) {
+        galleryViewModel.toastMessage.collect { message ->
+            Log.d("Mati", "Toast message is: $message")
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
     }
     Scaffold(
         bottomBar = { BottomToolbar(
@@ -120,17 +125,11 @@ fun ImageScreen(
             },
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
-                //galleryViewModel.uploadPhoto(currentUri)
+                galleryViewModel.uploadPhoto(currentUri)
             }
         ) },
         modifier = modifier
     ) { paddingValues ->
-
-        LaunchedEffect(Unit) {
-            galleryViewModel.toastMessage.collect { message ->
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
-        }
         ImageRoll(
             uiState,
             pagerState,

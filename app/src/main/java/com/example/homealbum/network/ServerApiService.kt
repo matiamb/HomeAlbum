@@ -24,5 +24,5 @@ interface ServerApiService{
         @Part("mimeType") mimeType: RequestBody,
         @Part("fileName") fileName: RequestBody,
         @Part("folderName") folderName: RequestBody
-    )
+    ): Response<Unit>
 }

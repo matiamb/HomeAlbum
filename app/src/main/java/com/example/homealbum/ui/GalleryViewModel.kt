@@ -74,22 +74,28 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            networkPhotoRepository.uploadPhoto(uri)
+            val serverResponse = networkPhotoRepository.uploadPhoto(uri)
+            if (serverResponse.code() == 200){
+                //val message = "Photo exist on the server"
+                _toastMessage.emit("Photo uploaded successfully")
+            } else {
+                //val message = "Photo not present on server"
+                _toastMessage.emit("Photo could not be uploaded")
+            }
         }
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           //val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-           var message: String
-//           if (serverResponse.code() == 200){
-//               message = "Photo exist on the server"
-//               _toastMessage.emit(message)
-//           } else {
-//               message = "Photo not present on server"
-//               _toastMessage.emit(message)
-//           }
-           message = "Photo not present on server"
-           _toastMessage.emit(message)
+           val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+           if (serverResponse.code() == 200){
+               //val message = "Photo exist on the server"
+               _toastMessage.emit("Photo exist on the server")
+           } else {
+               //val message = "Photo not present on server"
+               _toastMessage.emit("Photo not present on server")
+           }
+//           message = "Photo not present on server"
+//           _toastMessage.emit(message)
        }
     }
 
