@@ -14,15 +14,16 @@ interface ServerApiService{
     @GET
     suspend fun checkIfPhotoExist(
         @Url dynamicUrl: String,
-        @Query("hash") fileHash: String?
+        @Query("fileHash") fileHash: String?
     ): Response<Unit>
     @Multipart
     @POST
     suspend fun uploadPhoto(
         @Part file: MultipartBody.Part,
         @Url savedUrl: String,
-        @Part("mimeType") mimeType: RequestBody,
-        @Part("fileName") fileName: RequestBody,
+        @Query("fileHash") fileHash: String?,
+        //@Part("mimeType") mimeType: RequestBody,
+        //@Part("fileName") fileName: RequestBody,
         @Part("folderName") folderName: RequestBody
     ): Response<Unit>
 }

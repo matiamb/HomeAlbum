@@ -17,23 +17,24 @@ interface AppContainer {
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
 
-    private val mockServerInterceptor = Interceptor { chain ->
-        val request = chain.request()
-        Thread.sleep(1000)
-        Response.Builder()
-            .code(404)
-            .request(request)
-            .message("Ok")
-            .protocol(Protocol.HTTP_1_1)
-            .build()
-    }
-    private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(mockServerInterceptor)
-        .build()
+//    private val mockServerInterceptor = Interceptor { chain ->
+//        val request = chain.request()
+//        Thread.sleep(1000)
+//        Response.Builder()
+//            .code(404)
+//            .request(request)
+//            .message("Ok")
+//            .protocol(Protocol.HTTP_1_1)
+//            .build()
+//    }
+//    private val okHttpClient = OkHttpClient.Builder()
+//        .addInterceptor(mockServerInterceptor)
+//        .build()
+
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("http://localhost")
-            .client(okHttpClient)
+            //.client(okHttpClient)
             .build()
     }
     private val retrofitService: ServerApiService by lazy {

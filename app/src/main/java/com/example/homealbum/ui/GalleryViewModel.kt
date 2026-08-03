@@ -75,7 +75,7 @@ class GalleryViewModel(
     ){
         viewModelScope.launch {
             val serverResponse = networkPhotoRepository.uploadPhoto(uri)
-            if (serverResponse.code() == 200){
+            if (serverResponse.code() == 201){
                 //val message = "Photo exist on the server"
                 _toastMessage.emit("Photo uploaded successfully")
             } else {

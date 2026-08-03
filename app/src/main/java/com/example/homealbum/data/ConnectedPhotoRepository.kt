@@ -3,6 +3,7 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -33,7 +34,8 @@ class NetworkPhotoRepository(
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val dynamicUrl = serverIp.trimEnd('/')
-        return serverApiService.checkIfPhotoExist(dynamicUrl, fileHash)
+        val endpoint = "http://$dynamicUrl:8080/api/v1/media/exists"
+        return serverApiService.checkIfPhotoExist(endpoint, fileHash)
     }
 
     override suspend fun uploadPhoto(
@@ -42,17 +44,19 @@ class NetworkPhotoRepository(
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
+        val fileHash = getFileHash(fileUri)
         if (serverIp.isBlank()){
             throw IllegalArgumentException("Please enter a valid ip")
         }
-        val baseUrl = serverIp.trimEnd('/')
-        val endpoint = "$baseUrl/upload"
+        val dynamicUrl = serverIp.trimEnd('/')
+        val endpoint = "http://$dynamicUrl:8080/api/v1/media/upload"
         val contentResolver = context.contentResolver
         val mimeType = contentResolver.getType(fileUri) ?: "application/octet_stream"
         val fileName = getFileNameFromUri(context, fileUri) ?: "unnamed_file"
         val folderRequestBody = folderName.toRequestBody("text/plain".toMediaTypeOrNull())
-        val nameRequestBody = fileName.toRequestBody("text/plain".toMediaTypeOrNull())
-        val mimeTypeRequestBody = mimeType.toRequestBody("text/plain".toMediaTypeOrNull())
+        //val nameRequestBody = fileName.toRequestBody("text/plain".toMediaTypeOrNull())
+        //val mimeTypeRequestBody = mimeType.toRequestBody("text/plain".toMediaTypeOrNull())
+
 
         val mediaRequestBody = object : RequestBody() {
             override fun contentType(): MediaType? = mimeType.toMediaTypeOrNull()
@@ -69,8 +73,9 @@ class NetworkPhotoRepository(
         return serverApiService.uploadPhoto(
             file = filePart,
             savedUrl = endpoint,
-            mimeType = mimeTypeRequestBody,
-            fileName = nameRequestBody,
+            fileHash = fileHash,
+            //mimeType = mimeTypeRequestBody,
+            //fileName = nameRequestBody,
             folderName = folderRequestBody
         )
     }
