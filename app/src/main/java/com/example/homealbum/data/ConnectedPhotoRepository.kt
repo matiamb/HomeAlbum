@@ -29,18 +29,18 @@ class NetworkPhotoRepository(
     private val context: Context
 ) : ConnectedPhotoRepository{
 
-    override suspend fun checkIfPhotoExist(uri: Uri): Response<Unit> {
+    override suspend fun checkIfPhotoExist(uri: Uri): Response<Unit> = withContext(Dispatchers.IO){
         val fileHash = getFileHash(uri)
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val dynamicUrl = serverIp.trimEnd('/')
         val endpoint = "http://$dynamicUrl:8080/api/v1/media/exists"
-        return serverApiService.checkIfPhotoExist(endpoint, fileHash)
+        serverApiService.checkIfPhotoExist(endpoint, fileHash)
     }
 
     override suspend fun uploadPhoto(
         fileUri: Uri
-    ): Response<Unit> {
+    ): Response<Unit> = withContext(Dispatchers.IO){
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
@@ -70,7 +70,7 @@ class NetworkPhotoRepository(
         }
         val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)//the file string has to be the same as the one the server expects
 
-        return serverApiService.uploadPhoto(
+        serverApiService.uploadPhoto(
             file = filePart,
             savedUrl = endpoint,
             fileHash = fileHash,

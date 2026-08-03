@@ -74,25 +74,33 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            val serverResponse = networkPhotoRepository.uploadPhoto(uri)
-            if (serverResponse.code() == 201){
-                //val message = "Photo exist on the server"
-                _toastMessage.emit("Photo uploaded successfully")
-            } else {
-                //val message = "Photo not present on server"
-                _toastMessage.emit("Photo could not be uploaded")
+            try {
+                val serverResponse = networkPhotoRepository.uploadPhoto(uri)
+                if (serverResponse.code() == 201){
+                    //val message = "Photo exist on the server"
+                    _toastMessage.emit("Photo uploaded successfully")
+                } else {
+                    //val message = "Photo not present on server"
+                    _toastMessage.emit("Photo could not be uploaded")
+                }
+            } catch (e: Exception){
+                _toastMessage.emit("Connection error: Check your server or ip")
             }
         }
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-           if (serverResponse.code() == 200){
-               //val message = "Photo exist on the server"
-               _toastMessage.emit("Photo exist on the server")
-           } else {
-               //val message = "Photo not present on server"
-               _toastMessage.emit("Photo not present on server")
+           try {
+               val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+               if (serverResponse.code() == 200){
+                   //val message = "Photo exist on the server"
+                   _toastMessage.emit("Photo exist on the server")
+               } else {
+                   //val message = "Photo not present on server"
+                   _toastMessage.emit("Photo not present on server")
+               }
+           } catch (e: Exception){
+               _toastMessage.emit("Connection error: Check your server or ip")
            }
 //           message = "Photo not present on server"
 //           _toastMessage.emit(message)
