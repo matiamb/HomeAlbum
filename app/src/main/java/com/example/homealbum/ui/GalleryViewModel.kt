@@ -2,6 +2,7 @@ package com.example.homealbum.ui
 
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -18,12 +19,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import com.example.homealbum.data.NetworkPhotoRepository
+import com.example.homealbum.data.OfflineSettingsRepository
+import com.example.homealbum.model.UserSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 
 class GalleryViewModel(
     private val photosRepo: OfflinePhotoRepository,
-    private val networkPhotoRepository: NetworkPhotoRepository
+    private val networkPhotoRepository: NetworkPhotoRepository,
+    private val settingsRepository: OfflineSettingsRepository
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -74,33 +81,41 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            try {
-                val serverResponse = networkPhotoRepository.uploadPhoto(uri)
-                if (serverResponse.code() == 201){
-                    //val message = "Photo exist on the server"
-                    _toastMessage.emit("Photo uploaded successfully")
-                } else {
-                    //val message = "Photo not present on server"
-                    _toastMessage.emit("Photo could not be uploaded")
+            if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+                try {
+                    val serverResponse = networkPhotoRepository.uploadPhoto(uri)
+                    if (serverResponse.code() == 201){
+                        //val message = "Photo exist on the server"
+                        _toastMessage.emit("Photo uploaded successfully")
+                    } else {
+                        //val message = "Photo not present on server"
+                        _toastMessage.emit("Photo could not be uploaded")
+                    }
+                } catch (e: Exception){
+                    _toastMessage.emit("Connection error: Check your server or ip")
                 }
-            } catch (e: Exception){
-                _toastMessage.emit("Connection error: Check your server or ip")
+            } else {
+                _toastMessage.emit("Local backup is disabled!")
             }
         }
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           try {
-               val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-               if (serverResponse.code() == 200){
-                   //val message = "Photo exist on the server"
-                   _toastMessage.emit("Photo exist on the server")
-               } else {
-                   //val message = "Photo not present on server"
-                   _toastMessage.emit("Photo not present on server")
+           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+               try {
+                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+                   if (serverResponse.code() == 200){
+                       //val message = "Photo exist on the server"
+                       _toastMessage.emit("Photo exist on the server")
+                   } else {
+                       //val message = "Photo not present on server"
+                       _toastMessage.emit("Photo not present on server")
+                   }
+               } catch (e: Exception){
+                   _toastMessage.emit("Connection error: Check your server or ip")
                }
-           } catch (e: Exception){
-               _toastMessage.emit("Connection error: Check your server or ip")
+           } else {
+               _toastMessage.emit("Local backup is disabled!")
            }
 //           message = "Photo not present on server"
 //           _toastMessage.emit(message)
@@ -121,7 +136,12 @@ class GalleryViewModel(
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
                 val photoRepository = application.container.offlinePhotoRepository
                 val networkPhotoRepository = application.container.networkPhotoRepository
-                GalleryViewModel(photoRepository, networkPhotoRepository)
+                val settingsRepository = application.container.offlineSettingsRepository
+                GalleryViewModel(
+                    photoRepository,
+                    networkPhotoRepository,
+                    settingsRepository
+                    )
             }
         }
     }
