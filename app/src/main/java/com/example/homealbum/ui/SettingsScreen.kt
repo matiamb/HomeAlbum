@@ -1,5 +1,6 @@
 package com.example.homealbum.ui
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
     onBackFabPressed: () -> Unit
 ){
+    Log.d("Mati", "Settings screen: Composing...")
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
@@ -53,6 +55,7 @@ fun SettingsScreen(
             }
         }
     ) {innerPadding ->
+        Log.d("Mati", "Settings screen: Drawing content")
         SettingItemCard(
             settingsViewModel = settingsViewModel,
             modifier = Modifier.padding(innerPadding)
@@ -102,7 +105,7 @@ fun SettingItemCard(
                 style = MaterialTheme.typography.displayMedium
             )
             Row(
-                modifier = modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
