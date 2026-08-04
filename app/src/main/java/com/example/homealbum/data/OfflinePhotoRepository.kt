@@ -12,13 +12,22 @@ import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class PhotoRepository(private val context: Context) {
+interface PhotoRepository{
+    suspend fun getLocalPhotos(): List<MediaItem>
+    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest?
+    suspend fun getThumbnail(
+        uri: Uri,
+        width: Int,
+        height: Int
+    ): Bitmap?
+}
+class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
     /**
      * This method will request android to retrieve the image and videos it has from
      * the Camera folder, attempting to grab only the images taken by the user with the camera.
      */
 
-    suspend fun getLocalPhotos(): List<MediaItem> = withContext(Dispatchers.IO) {
+    override suspend fun getLocalPhotos(): List<MediaItem> = withContext(Dispatchers.IO) {
         val photoList = mutableListOf<MediaItem>()
 
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -76,7 +85,7 @@ class PhotoRepository(private val context: Context) {
         }
         return@withContext photoList
     }
-    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO) {
+    override suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -102,7 +111,7 @@ class PhotoRepository(private val context: Context) {
      * At this moment for older versions it will return null.
      * It is a suspend function since it is executing IO and storage search actions
      */
-    suspend fun getThumbnail(
+    override suspend fun getThumbnail(
         uri: Uri,
         width: Int,
         height: Int
