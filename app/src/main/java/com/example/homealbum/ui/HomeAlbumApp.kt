@@ -2,6 +2,11 @@ package com.example.homealbum.ui
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,7 +36,11 @@ fun HomeAlbumApp(
     NavHost(
         navController = navController,
         startDestination = AppScreens.GALLERY_START.name,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = { slideInHorizontally(initialOffsetX = {it})},
+        exitTransition = { slideOutHorizontally(targetOffsetX = {-it})},
+        popEnterTransition = {slideInHorizontally(initialOffsetX = {-it})},
+        popExitTransition = {slideOutHorizontally(targetOffsetX = {it})}
     ){
         composable(
             route = AppScreens.GALLERY_START.name
