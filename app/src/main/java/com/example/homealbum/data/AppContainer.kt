@@ -45,7 +45,10 @@ class DefaultAppContainer(context: Context) : AppContainer{
         OfflinePhotoRepository(context = context)
     }
     override val offlineSettingsRepository: OfflineSettingsRepository by lazy {
-        OfflineSettingsRepository(dataStore = context.dataStore)
+        OfflineSettingsRepository(
+            dataStore = context.dataStore,
+            serverApiService = retrofitService
+        )
     }
     override val networkPhotoRepository: NetworkPhotoRepository by lazy {
         NetworkPhotoRepository(

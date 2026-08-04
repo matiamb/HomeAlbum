@@ -23,6 +23,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,15 @@ fun SettingItemCard(
             .padding(32.dp),
         elevation = CardDefaults.cardElevation(16.dp)
     ) {
+        LaunchedEffect(Unit) {
+            settingsViewModel.toastMessage.collect { message ->
+                Toast.makeText(
+                    context,
+                    message,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
         Column(
             modifier = Modifier
                 .padding(8.dp)
@@ -148,17 +158,23 @@ fun SettingItemCard(
             Button(
                 onClick = {
                     settingsViewModel.saveServerSettings(textIp, textFolderName)
-                    Toast.makeText(
-                        context,
-                        "Settings saved!",
-                        Toast.LENGTH_LONG
-                    ).show()
+//                    Toast.makeText(
+//                        context,
+//                        "Settings saved!",
+//                        Toast.LENGTH_LONG
+//                    ).show()
                 },
-                enabled = settingsState.value.isBackupEnabled
+                enabled = settingsState.value.isBackupEnabled && !settingsViewModel.isChecking.value
             ) {
-                Text(
-                    text = "Save"
-                )
+                if (settingsViewModel.isChecking.value){
+                    Text(
+                        text = "Checking..."
+                    )
+                } else {
+                    Text(
+                        text = "Save"
+                    )
+                }
             }
         }
     }

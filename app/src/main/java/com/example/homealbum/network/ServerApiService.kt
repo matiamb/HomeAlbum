@@ -26,4 +26,8 @@ interface ServerApiService{
         //@Part("fileName") fileName: RequestBody,
         @Part("folderName") folderName: RequestBody
     ): Response<Unit>
+    @GET
+    suspend fun checkServerConnection(
+        @Url savedUrl: String
+    ): Response<Unit>
 }

@@ -6,16 +6,23 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.network.ServerApiService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import retrofit2.Response
 
 interface SettingsRepository {
     suspend fun saveServerSettings(ip: String, folderName: String)
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
+    suspend fun checkServerConnection(serverIp: String): Response<Unit>
 }
 
 class OfflineSettingsRepository(
-    private val dataStore: DataStore<Preferences>
+    private val dataStore: DataStore<Preferences>,
+    private val serverApiService: ServerApiService
 ) : SettingsRepository{
     private object PreferencesKeys {
         val SERVER_IP = stringPreferencesKey(name = "server_ip")
@@ -43,4 +50,10 @@ class OfflineSettingsRepository(
             preferences[PreferencesKeys.IS_BACKUP_ENABLED] = isBackupEnabled
         }
     }
+
+    override suspend fun checkServerConnection(serverIp: String): Response<Unit> =
+        withContext(Dispatchers.IO){
+            val endpoint = "http://$serverIp:8080/api/v1/media/ping"
+            serverApiService.checkServerConnection(endpoint)
+        }
 }
