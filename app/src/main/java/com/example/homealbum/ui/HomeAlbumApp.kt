@@ -27,6 +27,7 @@ fun HomeAlbumApp(
 //    val photoRepository = PhotoRepository(context)
 
     val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
+    val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
     NavHost(
         navController = navController,
         startDestination = AppScreens.GALLERY_START.name,
@@ -48,7 +49,10 @@ fun HomeAlbumApp(
         composable(
             route = AppScreens.SETTINGS.name
         ){
-            SettingsScreen()
+            SettingsScreen(
+                settingsViewModel = settingsViewModel,
+                onBackFabPressed = {navController.popBackStack()}
+            )
         }
         composable(
             route = "${AppScreens.IMAGE_VIEW.name}/{index}",
