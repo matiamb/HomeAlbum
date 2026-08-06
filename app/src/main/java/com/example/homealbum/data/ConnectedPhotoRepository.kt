@@ -3,7 +3,6 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -21,6 +20,7 @@ import java.security.MessageDigest
 interface ConnectedPhotoRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<Unit>
     suspend fun uploadPhoto(fileUri: Uri): Response<Unit>
+    suspend fun deleteMediaFile(fileUri: Uri): Response<Unit>
 }
 
 class NetworkPhotoRepository(
@@ -78,6 +78,13 @@ class NetworkPhotoRepository(
             //fileName = nameRequestBody,
             folderName = folderRequestBody
         )
+    }
+
+    override suspend fun deleteMediaFile(fileUri: Uri): Response<Unit> = withContext(Dispatchers.IO) {
+        val serverIp = offlineSettingsRepository.userSettingsFlow.first().serverIp
+        val endpoint = "http://$serverIp:8080/api/v1/media/delete"
+        val fileHash = getFileHash(fileUri)
+        serverApiService.deleteMediaFile(endpoint, fileHash)
     }
 
     private fun getFileNameFromUri(

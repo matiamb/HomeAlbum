@@ -2,7 +2,6 @@ package com.example.homealbum.ui
 
 import android.graphics.Bitmap
 import android.net.Uri
-import android.util.Log
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -20,12 +19,9 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import com.example.homealbum.data.NetworkPhotoRepository
 import com.example.homealbum.data.OfflineSettingsRepository
-import com.example.homealbum.model.UserSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 
 class GalleryViewModel(
     private val photosRepo: OfflinePhotoRepository,
@@ -64,10 +60,28 @@ class GalleryViewModel(
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
             val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
-            if (intentSenderRequest != null) {
-                onIntentReady(intentSenderRequest)
-            } else {
-                removeThrashedPhotoFromUi(uri)
+            try {
+                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
+                if (isFileInServer.isSuccessful){
+                    networkPhotoRepository.deleteMediaFile(uri)
+                    if (intentSenderRequest != null) {
+                        onIntentReady(intentSenderRequest)
+                    } else {
+                        removeThrashedPhotoFromUi(uri)
+                    }
+                } else {
+                    if (intentSenderRequest != null) {
+                        onIntentReady(intentSenderRequest)
+                    } else {
+                        removeThrashedPhotoFromUi(uri)
+                    }
+                }
+            } catch (e: Exception){
+                if (intentSenderRequest != null) {
+                    onIntentReady(intentSenderRequest)
+                } else {
+                    removeThrashedPhotoFromUi(uri)
+                }
             }
         }
     }
