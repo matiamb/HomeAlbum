@@ -23,7 +23,7 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = UserSettings("", "", false)
     )
-    private var _toastMessage = MutableSharedFlow<String>()
+    private var _toastMessage = MutableSharedFlow<String?>()
     val toastMessage = _toastMessage.asSharedFlow()
     private var _isChecking = mutableStateOf(false)
     val isChecking = _isChecking
@@ -33,7 +33,7 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
             try {
                 val serverResponse = settingsRepository.checkServerConnection(ip)
                 if (serverResponse.isSuccessful){
-                    _toastMessage.emit("Server connection ok, settings saved!")
+                    _toastMessage.emit(serverResponse.body()?.string())
                     settingsRepository.saveServerSettings(ip, folderName)
                     _isChecking.value = false
                 }

@@ -40,7 +40,7 @@ class GalleryViewModel(
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
     val galleryUiState: StateFlow<GalleryUiState> = _galleryUiState.asStateFlow()
 
-    private val _toastMessage = MutableSharedFlow<String>()
+    private val _toastMessage = MutableSharedFlow<String?>()
     val toastMessage = _toastMessage.asSharedFlow()
 
     fun loadPhotos(){
@@ -143,12 +143,12 @@ class GalleryViewModel(
            if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
                try {
                    val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-                   if (serverResponse.code() == 200){
+                   if (serverResponse.isSuccessful){
                        //val message = "Photo exist on the server"
-                       _toastMessage.emit("Photo exist on the server")
+                       _toastMessage.emit(serverResponse.body()?.string())
                    } else {
                        //val message = "Photo not present on server"
-                       _toastMessage.emit("Photo not present on server")
+                       _toastMessage.emit(serverResponse.errorBody()?.string())
                    }
                } catch (e: Exception){
                    _toastMessage.emit("Connection error: Check your server or ip")

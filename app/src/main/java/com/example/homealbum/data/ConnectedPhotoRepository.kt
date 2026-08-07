@@ -12,15 +12,16 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import okio.BufferedSink
 import okio.source
 import retrofit2.Response
 import java.security.MessageDigest
 
 interface ConnectedPhotoRepository {
-    suspend fun checkIfPhotoExist(uri: Uri): Response<Unit>
-    suspend fun uploadPhoto(fileUri: Uri): Response<Unit>
-    suspend fun deleteMediaFile(fileUri: Uri): Response<Unit>
+    suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
+    suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
+    suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody>
 }
 
 class NetworkPhotoRepository(
@@ -29,7 +30,7 @@ class NetworkPhotoRepository(
     private val context: Context
 ) : ConnectedPhotoRepository{
 
-    override suspend fun checkIfPhotoExist(uri: Uri): Response<Unit> = withContext(Dispatchers.IO){
+    override suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody> = withContext(Dispatchers.IO){
         val fileHash = getFileHash(uri)
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
@@ -40,7 +41,7 @@ class NetworkPhotoRepository(
 
     override suspend fun uploadPhoto(
         fileUri: Uri
-    ): Response<Unit> = withContext(Dispatchers.IO){
+    ): Response<ResponseBody> = withContext(Dispatchers.IO){
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
@@ -80,7 +81,7 @@ class NetworkPhotoRepository(
         )
     }
 
-    override suspend fun deleteMediaFile(fileUri: Uri): Response<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody> = withContext(Dispatchers.IO) {
         val serverIp = offlineSettingsRepository.userSettingsFlow.first().serverIp
         val endpoint = "http://$serverIp:8080/api/v1/media/delete"
         val fileHash = getFileHash(fileUri)
