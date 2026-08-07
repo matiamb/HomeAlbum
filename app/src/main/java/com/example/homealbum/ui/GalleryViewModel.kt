@@ -117,9 +117,11 @@ class GalleryViewModel(
         viewModelScope.launch {
             if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
                 workManager.enqueue(request)
-                workManager.getWorkInfoByIdFlow(request.id).collect { workerStatus ->
-                    _toastMessage.emit(workerStatus?.state.toString())
-                }
+//                workManager.getWorkInfoByIdFlow(request.id).collect { workerStatus ->
+//                    if (workerStatus?.state == WorkInfo.State.SUCCEEDED){
+//                        _toastMessage.emit("File uploaded!")
+//                    }
+//                }
 
 //                try {
 //                    val serverResponse = networkPhotoRepository.uploadPhoto(uri)

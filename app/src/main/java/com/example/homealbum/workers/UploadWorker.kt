@@ -17,6 +17,7 @@ import okio.IOException
 class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
     companion object {
         const val KEY_URI = "photo_uri"
+        const val NOTIFICATION_ID = 1
     }
     private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -44,7 +45,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     fun makeNotification(context: Context, message: String?){
         val name = "Upload notification"
         val description = "Posts notifications of the status of an upload"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val importance = NotificationManager.IMPORTANCE_HIGH
         val channel = NotificationChannel("Upload_notifications", name, importance)
         channel.description = description
 
@@ -54,8 +55,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Upload status")
             .setContentText(message)
-            .setPriority(NotificationManager.IMPORTANCE_HIGH)
 
-        NotificationManagerCompat.from(context).notify(1, builder.build())
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
     }
 }
