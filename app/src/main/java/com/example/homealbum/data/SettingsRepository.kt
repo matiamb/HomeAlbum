@@ -12,12 +12,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
 import retrofit2.Response
 
 interface SettingsRepository {
     suspend fun saveServerSettings(ip: String, folderName: String)
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
-    suspend fun checkServerConnection(serverIp: String): Response<Unit>
+    suspend fun checkServerConnection(serverIp: String): Response<ResponseBody>
 }
 
 class OfflineSettingsRepository(
@@ -51,7 +52,7 @@ class OfflineSettingsRepository(
         }
     }
 
-    override suspend fun checkServerConnection(serverIp: String): Response<Unit> =
+    override suspend fun checkServerConnection(serverIp: String): Response<ResponseBody> =
         withContext(Dispatchers.IO){
             val endpoint = "http://$serverIp:8080/api/v1/media/ping"
             serverApiService.checkServerConnection(endpoint)

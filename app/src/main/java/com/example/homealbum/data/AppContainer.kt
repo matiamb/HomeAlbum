@@ -2,6 +2,7 @@ package com.example.homealbum.data
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -13,6 +14,7 @@ interface AppContainer {
     val offlinePhotoRepository: OfflinePhotoRepository
     val offlineSettingsRepository: OfflineSettingsRepository
     val networkPhotoRepository: NetworkPhotoRepository
+    val workManager: WorkManager
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
@@ -57,4 +59,5 @@ class DefaultAppContainer(context: Context) : AppContainer{
             context = context
         )
     }
+    override val workManager: WorkManager = WorkManager.getInstance(context)
 }

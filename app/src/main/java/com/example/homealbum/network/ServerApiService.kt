@@ -2,6 +2,7 @@ package com.example.homealbum.network
 
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -16,7 +17,7 @@ interface ServerApiService{
     suspend fun checkIfPhotoExist(
         @Url dynamicUrl: String,
         @Query("fileHash") fileHash: String?
-    ): Response<Unit>
+    ): Response<ResponseBody>
     @Multipart
     @POST
     suspend fun uploadPhoto(
@@ -26,14 +27,14 @@ interface ServerApiService{
         //@Part("mimeType") mimeType: RequestBody,
         //@Part("fileName") fileName: RequestBody,
         @Part("folderName") folderName: RequestBody
-    ): Response<Unit>
+    ): Response<ResponseBody>
     @GET
     suspend fun checkServerConnection(
         @Url savedUrl: String
-    ): Response<Unit>
+    ): Response<ResponseBody>
     @DELETE
     suspend fun deleteMediaFile(
         @Url savedUrl: String,
         @Query("fileHash") fileHash: String?
-    ): Response<Unit>
+    ): Response<ResponseBody>
 }
