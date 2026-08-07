@@ -17,8 +17,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.example.homealbum.data.NetworkPhotoRepository
 import com.example.homealbum.data.OfflineSettingsRepository
+import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -26,7 +33,8 @@ import kotlinx.coroutines.flow.first
 class GalleryViewModel(
     private val photosRepo: OfflinePhotoRepository,
     private val networkPhotoRepository: NetworkPhotoRepository,
-    private val settingsRepository: OfflineSettingsRepository
+    private val settingsRepository: OfflineSettingsRepository,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -94,20 +102,37 @@ class GalleryViewModel(
     fun uploadPhoto(
         uri: Uri
     ){
+        val constraints= Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+        val request = OneTimeWorkRequestBuilder<UploadWorker>()
+            .addTag("upload")
+            .setConstraints(constraints)
+            .setInputData(
+                workDataOf(UploadWorker.KEY_URI to uri.toString())
+            )
+            .build()
+
         viewModelScope.launch {
             if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-                try {
-                    val serverResponse = networkPhotoRepository.uploadPhoto(uri)
-                    if (serverResponse.code() == 201){
-                        //val message = "Photo exist on the server"
-                        _toastMessage.emit("Photo uploaded successfully")
-                    } else {
-                        //val message = "Photo not present on server"
-                        _toastMessage.emit("Photo could not be uploaded")
-                    }
-                } catch (e: Exception){
-                    _toastMessage.emit("Connection error: Check your server or ip")
+                workManager.enqueue(request)
+                workManager.getWorkInfoByIdFlow(request.id).collect { workerStatus ->
+                    _toastMessage.emit(workerStatus?.state.toString())
                 }
+
+//                try {
+//                    val serverResponse = networkPhotoRepository.uploadPhoto(uri)
+//                    if (serverResponse.code() == 201){
+//                        //val message = "Photo exist on the server"
+//                        _toastMessage.emit("Photo uploaded successfully")
+//                    } else {
+//                        //val message = "Photo not present on server"
+//                        _toastMessage.emit("Photo could not be uploaded")
+//                    }
+//                } catch (e: Exception){
+//                    _toastMessage.emit("Connection error: Check your server or ip")
+//                }
             } else {
                 _toastMessage.emit("Local backup is disabled!")
             }
@@ -154,7 +179,8 @@ class GalleryViewModel(
                 GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
-                    settingsRepository
+                    settingsRepository,
+                    application.container.workManager
                     )
             }
         }
