@@ -29,8 +29,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -157,6 +159,7 @@ fun GalleryScreen(
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
                 onImageClicked = onImageClicked,
+                onRefresh = {galleryViewModel.loadPhotos()},
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
@@ -174,31 +177,39 @@ fun GalleryScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
     onImageClicked: (Int) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ){
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    PullToRefreshBox(
+        isRefreshing = galleryUiState.value.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
     ) {
-        itemsIndexed(
-            items = galleryUiState.value.photoList,
-            key = {_, uri -> uri.toString()}
-        ){ index, item ->
-            ImageThumbnail(
-                mediaItem = item,
-                galleryViewModel = galleryViewModel,
-                index = index,
-                onImageClicked = onImageClicked
-            )
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            itemsIndexed(
+                items = galleryUiState.value.photoList,
+                key = {_, uri -> uri.toString()}
+            ){ index, item ->
+                ImageThumbnail(
+                    mediaItem = item,
+                    galleryViewModel = galleryViewModel,
+                    index = index,
+                    onImageClicked = onImageClicked
+                )
+            }
         }
     }
 }
@@ -267,7 +278,9 @@ fun ImageThumbnail(
         AsyncImage(
             model = thumbnail,
             contentDescription = "",
-            modifier = Modifier.height(150.dp).clickable(true, onClick = {onImageClicked(index)}),
+            modifier = Modifier
+                .height(150.dp)
+                .clickable(true, onClick = { onImageClicked(index) }),
             contentScale = ContentScale.Crop
         )
         if (mediaItem.isVideo){
