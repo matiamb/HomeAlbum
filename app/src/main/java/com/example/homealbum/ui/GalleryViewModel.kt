@@ -26,6 +26,7 @@ import androidx.work.workDataOf
 import com.example.homealbum.data.NetworkPhotoRepository
 import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.workers.UploadWorker
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -45,7 +46,15 @@ class GalleryViewModel(
 
     fun loadPhotos(){
         viewModelScope.launch {
-            _galleryUiState.value = GalleryUiState(photoList = photosRepo.getLocalPhotos())
+            _galleryUiState.update { it.copy(isRefreshing = true) }
+            try {
+                _galleryUiState.update { it.copy(photoList = photosRepo.getLocalPhotos()) }
+            } catch (e: Exception){
+                _toastMessage.emit(e.message)
+            } finally {
+                _galleryUiState.update { it.copy(isRefreshing = false) }
+            }
+
         }
     }
 
