@@ -34,7 +34,7 @@ class OfflineSettingsRepository(
     val userSettingsFlow: Flow<UserSettings> = dataStore.data.map { preferences ->
         UserSettings(
             serverIp = preferences[PreferencesKeys.SERVER_IP] ?: "",
-            serverFolderName = preferences[PreferencesKeys.FOLDER_NAME] ?: "Default Folder Name",
+            serverFolderName = preferences[PreferencesKeys.FOLDER_NAME] ?: "",
             isBackupEnabled = preferences[PreferencesKeys.IS_BACKUP_ENABLED] ?: false
         )
     }
