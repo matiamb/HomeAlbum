@@ -3,6 +3,7 @@ package com.example.homealbum.ui
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,13 +21,12 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.example.homealbum.R
 import com.example.homealbum.data.NetworkPhotoRepository
 import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.workers.UploadWorker
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
@@ -41,7 +41,7 @@ class GalleryViewModel(
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
     val galleryUiState: StateFlow<GalleryUiState> = _galleryUiState.asStateFlow()
 
-    private val _toastMessage = MutableSharedFlow<String?>()
+    private val _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
 
     fun loadPhotos(){
@@ -50,7 +50,7 @@ class GalleryViewModel(
             try {
                 _galleryUiState.update { it.copy(photoList = photosRepo.getLocalPhotos()) }
             } catch (e: Exception){
-                _toastMessage.emit(e.message)
+                _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
             } finally {
                 _galleryUiState.update { it.copy(isRefreshing = false) }
             }
@@ -126,26 +126,8 @@ class GalleryViewModel(
         viewModelScope.launch {
             if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
                 workManager.enqueue(request)
-//                workManager.getWorkInfoByIdFlow(request.id).collect { workerStatus ->
-//                    if (workerStatus?.state == WorkInfo.State.SUCCEEDED){
-//                        _toastMessage.emit("File uploaded!")
-//                    }
-//                }
-
-//                try {
-//                    val serverResponse = networkPhotoRepository.uploadPhoto(uri)
-//                    if (serverResponse.code() == 201){
-//                        //val message = "Photo exist on the server"
-//                        _toastMessage.emit("Photo uploaded successfully")
-//                    } else {
-//                        //val message = "Photo not present on server"
-//                        _toastMessage.emit("Photo could not be uploaded")
-//                    }
-//                } catch (e: Exception){
-//                    _toastMessage.emit("Connection error: Check your server or ip")
-//                }
             } else {
-                _toastMessage.emit("Local backup is disabled!")
+                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
         }
     }
@@ -155,31 +137,18 @@ class GalleryViewModel(
                try {
                    val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
                    if (serverResponse.isSuccessful){
-                       //val message = "Photo exist on the server"
-                       _toastMessage.emit(serverResponse.body()?.string())
+                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
                    } else {
-                       //val message = "Photo not present on server"
-                       _toastMessage.emit(serverResponse.errorBody()?.string())
+                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
                    }
                } catch (e: Exception){
-                   _toastMessage.emit("Connection error: Check your server or ip")
+                   _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
                }
            } else {
-               _toastMessage.emit("Local backup is disabled!")
+               _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
-//           message = "Photo not present on server"
-//           _toastMessage.emit(message)
        }
     }
-
-//    init {
-//        viewModelScope.launch {
-//            photosRepo.photoList.collect { photoList ->
-//                _galleryUiState.update { it.copy(photoList = photoList) }
-//            }
-//        }
-//
-//    }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -197,13 +166,8 @@ class GalleryViewModel(
         }
     }
 }
-//class GalleryViewModelFactory(private val photosRepo: PhotoRepository) : ViewModelProvider.Factory {
-//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-//        if (modelClass.isAssignableFrom(GalleryViewModel::class.java)) {
-//            @Suppress("UNCHECKED_CAST")
-//            return GalleryViewModel(photosRepo) as T
-//        }
-//        throw IllegalArgumentException("Clase ViewModel desconocida")
-//    }
+data class ToastText(
+    @StringRes val message: Int = 0
+)
 
 

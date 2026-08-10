@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
+import com.example.homealbum.R
 import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.model.UserSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,7 +24,7 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = UserSettings("", "", false)
     )
-    private var _toastMessage = MutableSharedFlow<String?>()
+    private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
     private var _isChecking = mutableStateOf(false)
     val isChecking = _isChecking
@@ -33,12 +34,12 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
             try {
                 val serverResponse = settingsRepository.checkServerConnection(ip)
                 if (serverResponse.isSuccessful){
-                    _toastMessage.emit(serverResponse.body()?.string())
+                    _toastMessage.emit(ToastText(message = R.string.server_connection_ok))
                     settingsRepository.saveServerSettings(ip, folderName)
                     _isChecking.value = false
                 }
             } catch (e: Exception){
-                _toastMessage.emit("Server connection failed")
+                _toastMessage.emit(ToastText(message = R.string.server_connection_failed))
             } finally {
                 _isChecking.value = false
             }

@@ -108,8 +108,7 @@ fun ImageScreen(
     }
     LaunchedEffect(Unit) {
         galleryViewModel.toastMessage.collect { message ->
-            Log.d("Mati", "Toast message is: $message")
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, message.message, Toast.LENGTH_LONG).show()
         }
     }
     Scaffold(
@@ -160,7 +159,6 @@ fun ImageScreen(
             )
         }
     }
-    Log.d("Mati", "${uiState.value.photoList.size} photos left")
 }
 
 
@@ -425,15 +423,6 @@ fun VideoPlayer(
     )
 }
 
-//@Preview(showSystemUi = true)
-//@Composable
-//private fun ImageScreenPreview(){
-//    val galleryViewModel: GalleryViewModel = viewModel()
-//    ImageScreen(
-//        galleryViewModel = galleryViewModel,
-//        initialPageIndex = 1
-//)
-//}
 
 private fun sharePhoto(context: Context, uri: Uri){
     val shareIntent = Intent().apply {

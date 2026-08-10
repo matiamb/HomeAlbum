@@ -38,8 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.homealbum.R
 
 @Composable
 fun SettingsScreen(
@@ -98,7 +100,6 @@ fun SettingItemCard(
     var textFolderName by remember(settingsState.value.serverFolderName) { mutableStateOf(settingsState.value.serverFolderName) }
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-//    var isEnabled by remember { mutableStateOf(false) }
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -126,7 +127,7 @@ fun SettingItemCard(
                 contentDescription = ""
             )
             Text(
-                text = "Settings",
+                text = stringResource(R.string.settings),
                 modifier = Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.displayLarge
             )
@@ -136,7 +137,7 @@ fun SettingItemCard(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 Text(
-                    text = "Enable local server backup?"
+                    text = stringResource(R.string.enable_local_server_backup)
                 )
                 Switch(
                     checked = settingsState.value.isBackupEnabled,
@@ -161,12 +162,12 @@ fun SettingItemCard(
                 onValueChange = { newText -> textIp = newText},
                 label = {
                     Text(
-                        text = "Please enter the server ip"
+                        text = stringResource(R.string.please_enter_the_server_ip)
                     )
                 },
                 placeholder = {
                     Text(
-                        text = "Example: 100.0.0.1"
+                        text = stringResource(R.string.example_ip_msg)
                     )
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -178,12 +179,12 @@ fun SettingItemCard(
                 onValueChange = { newText -> textFolderName = newText},
                 label = {
                     Text(
-                        text = "Please enter the folder name"
+                        text = stringResource(R.string.please_enter_the_folder_name)
                     )
                 },
                 placeholder = {
                     Text(
-                        text = "Example: Folder/subFolder"
+                        text = stringResource(R.string.example_folder_msg)
                     )
                 },
                 enabled = settingsState.value.isBackupEnabled,
@@ -192,33 +193,19 @@ fun SettingItemCard(
             Button(
                 onClick = {
                     settingsViewModel.saveServerSettings(textIp, textFolderName)
-//                    Toast.makeText(
-//                        context,
-//                        "Settings saved!",
-//                        Toast.LENGTH_LONG
-//                    ).show()
                 },
                 enabled = settingsState.value.isBackupEnabled && !settingsViewModel.isChecking.value
             ) {
                 if (settingsViewModel.isChecking.value){
                     Text(
-                        text = "Checking..."
+                        text = stringResource(R.string.checking_btn)
                     )
                 } else {
                     Text(
-                        text = "Save"
+                        text = stringResource(R.string.save_btn)
                     )
                 }
             }
         }
     }
 }
-
-//@Preview(showSystemUi = true)
-//@Composable
-//fun SettingItemCardPreview(){
-//    SettingsScreen(
-//        settingsViewModel = ,
-//        onBackFabPressed = {}
-//    )
-//}
