@@ -5,13 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
@@ -25,10 +22,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -36,7 +30,6 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,9 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -60,6 +51,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -72,7 +64,6 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.R
-import kotlinx.coroutines.launch
 
 @Composable
 fun ImageScreen(
@@ -108,8 +99,7 @@ fun ImageScreen(
     }
     LaunchedEffect(Unit) {
         galleryViewModel.toastMessage.collect { message ->
-            Log.d("Mati", "Toast message is: $message")
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, message.message, Toast.LENGTH_LONG).show()
         }
     }
     Scaffold(
@@ -160,7 +150,6 @@ fun ImageScreen(
             )
         }
     }
-    Log.d("Mati", "${uiState.value.photoList.size} photos left")
 }
 
 
@@ -257,10 +246,11 @@ fun ImageRoll(
                                 }
                             )
                         }
-                        .sharedElement(sharedContentState = rememberSharedContentState
-                            (
-                            key = "media-$page"
-                                    ),
+                        .sharedElement(
+                            sharedContentState = rememberSharedContentState
+                                (
+                                key = "media-$page"
+                            ),
                             animatedVisibilityScope = animatedVisibilityScope
                         )
                     ,contentScale = ContentScale.Fit
@@ -285,30 +275,39 @@ fun BottomToolbar(
             IconButton(onClick = onDeleteClicked) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Delete"
+                    contentDescription = stringResource(R.string.delete_file_icon_desc)
                 )
             }
             IconButton(onClick = onSharedClicked) {
                 Icon(
                     Icons.Filled.Share,
-                    contentDescription = "Share"
+                    contentDescription = stringResource(R.string.share_file_icon_desc)
                 )
             }
             IconButton(onClick = onUploadClicked) {
                 Icon(
                     painterResource(R.drawable.outline_cloud_upload_24),
-                    contentDescription = "Upload"
+                    contentDescription = stringResource(R.string.upload_file_icon_desc)
                 )
             }
             IconButton(onClick = checkPhotoIsUploaded) {
                 Icon(
                     painterResource(R.drawable.outline_cloud_alert_24),
-                    "Check if file is in the server"
+                    stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
                 )
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onBackFabClicked) {
+            var isNavigating by remember { mutableStateOf(false) }
+            FloatingActionButton(
+                onClick = {
+                    if (!isNavigating){
+                        isNavigating = true
+                        onBackFabClicked()
+                    }
+
+                }
+            ) {
                 Icon(
                     Icons.Default.ArrowBack,
                     contentDescription = "Back"
@@ -415,15 +414,6 @@ fun VideoPlayer(
     )
 }
 
-//@Preview(showSystemUi = true)
-//@Composable
-//private fun ImageScreenPreview(){
-//    val galleryViewModel: GalleryViewModel = viewModel()
-//    ImageScreen(
-//        galleryViewModel = galleryViewModel,
-//        initialPageIndex = 1
-//)
-//}
 
 private fun sharePhoto(context: Context, uri: Uri){
     val shareIntent = Intent().apply {

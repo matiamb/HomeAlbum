@@ -39,7 +39,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -61,58 +60,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.model.MediaItem
 
-//enum class AppScreens{
-//    GALLERY_START,
-//    SETTINGS,
-//    IMAGE_VIEW
-//}
-
-//@RequiresApi(Build.VERSION_CODES.Q)
-//@Composable
-//fun HomeAlbumApp(
-//    navController: NavHostController = rememberNavController()
-//){
-////    val context = LocalContext.current
-////    val photoRepository = PhotoRepository(context)
-//
-//    val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
-//    NavHost(
-//        navController = navController,
-//        startDestination = AppScreens.GALLERY_START.name,
-//        modifier = Modifier.fillMaxSize()
-//    ){
-//        composable(
-//            route = AppScreens.GALLERY_START.name
-//        ){
-//            GalleryScreen(
-//                galleryViewModel = galleryViewModel,
-//                onSettingsFabClicked = {
-//                    navController.navigate(AppScreens.SETTINGS.name)
-//                },
-//                onImageClicked = { index ->
-//                    navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
-//                }
-//            )
-//        }
-//        composable(
-//            route = AppScreens.SETTINGS.name
-//        ){
-//            SettingsScreen()
-//        }
-//        composable(
-//            route = "${AppScreens.IMAGE_VIEW.name}/{index}",
-//            arguments = listOf(navArgument("index") { type = NavType.IntType })
-//        ) { navBackStackEntry ->
-//            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
-//            ImageScreen(
-//                galleryViewModel = galleryViewModel,
-//                initialPageIndex = index,
-//                onBackFabClicked = {navController.popBackStack()},
-//                onLastPhotoDeleted = {navController.popBackStack()}
-//                )
-//        }
-//    }
-//}
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -301,7 +248,7 @@ fun RequestPermissionFab(
         modifier = modifier.padding(8.dp)
     ) {
         Text(
-            text = "Request Permission",
+            text = stringResource(R.string.request_permission_fab),
             modifier = Modifier.padding(8.dp)
         )
     }

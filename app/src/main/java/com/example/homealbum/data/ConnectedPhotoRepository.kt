@@ -35,7 +35,7 @@ class NetworkPhotoRepository(
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val dynamicUrl = serverIp.trimEnd('/')
-        val endpoint = "http://$dynamicUrl:8080/api/v1/media/exists"
+        val endpoint = "http://$dynamicUrl/api/v1/media/exists"
         serverApiService.checkIfPhotoExist(endpoint, fileHash)
     }
 
@@ -50,13 +50,11 @@ class NetworkPhotoRepository(
             throw IllegalArgumentException("Please enter a valid ip")
         }
         val dynamicUrl = serverIp.trimEnd('/')
-        val endpoint = "http://$dynamicUrl:8080/api/v1/media/upload"
+        val endpoint = "http://$dynamicUrl/api/v1/media/upload"
         val contentResolver = context.contentResolver
         val mimeType = contentResolver.getType(fileUri) ?: "application/octet_stream"
         val fileName = getFileNameFromUri(context, fileUri) ?: "unnamed_file"
         val folderRequestBody = folderName.toRequestBody("text/plain".toMediaTypeOrNull())
-        //val nameRequestBody = fileName.toRequestBody("text/plain".toMediaTypeOrNull())
-        //val mimeTypeRequestBody = mimeType.toRequestBody("text/plain".toMediaTypeOrNull())
 
 
         val mediaRequestBody = object : RequestBody() {
@@ -75,15 +73,13 @@ class NetworkPhotoRepository(
             file = filePart,
             savedUrl = endpoint,
             fileHash = fileHash,
-            //mimeType = mimeTypeRequestBody,
-            //fileName = nameRequestBody,
             folderName = folderRequestBody
         )
     }
 
     override suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody> = withContext(Dispatchers.IO) {
         val serverIp = offlineSettingsRepository.userSettingsFlow.first().serverIp
-        val endpoint = "http://$serverIp:8080/api/v1/media/delete"
+        val endpoint = "http://$serverIp/api/v1/media/delete"
         val fileHash = getFileHash(fileUri)
         serverApiService.deleteMediaFile(endpoint, fileHash)
     }
@@ -111,7 +107,6 @@ class NetworkPhotoRepository(
         return null
     }
     private suspend fun getFileHash(uri: Uri): String?{
-        //TODO check what hash algorithm the server uses
         return withContext(Dispatchers.IO){
             try {
                 val digest = MessageDigest.getInstance("SHA-256")
