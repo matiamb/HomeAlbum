@@ -110,7 +110,7 @@ fun SettingItemCard(
             settingsViewModel.toastMessage.collect { message ->
                 Toast.makeText(
                     context,
-                    message,
+                    message.message,
                     Toast.LENGTH_LONG
                 ).show()
             }
