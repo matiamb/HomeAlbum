@@ -11,6 +11,8 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.homealbum.model.MediaItem
 
 //enum class AppScreens{
@@ -108,13 +111,17 @@ import com.example.homealbum.model.MediaItem
 fun GalleryScreen(
     galleryViewModel: GalleryViewModel,
     onSettingsFabClicked: () -> Unit,
-    onImageClicked: (Int) -> Unit
+    onImageClicked: (Int) -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ){
     Scaffold(
         topBar = {GalleryTopBar()},
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {SettingsFab(
-            onSettingsFabClicked
+            onSettingsFabClicked,
+            sharedTransitionScope,
+            animatedVisibilityScope
         )}
     ) { innerPadding ->
         val context = LocalContext.current
@@ -160,6 +167,8 @@ fun GalleryScreen(
                 galleryViewModel = galleryViewModel,
                 onImageClicked = onImageClicked,
                 onRefresh = {galleryViewModel.loadPhotos()},
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
                 modifier = Modifier.padding(innerPadding)
             )
         } else {
@@ -184,47 +193,68 @@ private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
     onImageClicked: (Int) -> Unit,
     onRefresh: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
 
-    PullToRefreshBox(
-        isRefreshing = galleryUiState.value.isRefreshing,
-        onRefresh = onRefresh,
-        modifier = modifier.fillMaxSize()
-    ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+    with(sharedTransitionScope){
+        PullToRefreshBox(
+            isRefreshing = galleryUiState.value.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = modifier.fillMaxSize()
         ) {
-            itemsIndexed(
-                items = galleryUiState.value.photoList,
-                key = {_, uri -> uri.toString()}
-            ){ index, item ->
-                ImageThumbnail(
-                    mediaItem = item,
-                    galleryViewModel = galleryViewModel,
-                    index = index,
-                    onImageClicked = onImageClicked
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                itemsIndexed(
+                    items = galleryUiState.value.photoList,
+                    key = {_, uri -> uri.toString()}
+                ){ index, item ->
+                    ImageThumbnail(
+                        mediaItem = item,
+                        galleryViewModel = galleryViewModel,
+                        index = index,
+                        onImageClicked = onImageClicked,
+                        modifier = Modifier.sharedElement(
+                            sharedContentState = rememberSharedContentState(
+                                key = "media-$index"
+                            ),
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )
+                    )
+                }
             }
         }
     }
+
 }
 
 @Composable
 fun SettingsFab(
-    onSettingsFabClicked: () -> Unit
+    onSettingsFabClicked: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
 ){
-    FloatingActionButton(
-        onClick = onSettingsFabClicked
-    ) {
-        Icon(
-            imageVector = Icons.Default.Settings,
-            contentDescription = ""
-        )
+    with(sharedTransitionScope){
+        FloatingActionButton(
+            onClick = onSettingsFabClicked,
+            modifier = Modifier.sharedBounds(
+                sharedContentState = rememberSharedContentState(
+                    key = "settings-screen"
+                ),
+                animatedVisibilityScope = animatedVisibilityScope
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = ""
+            )
+        }
     }
 }
 
@@ -271,12 +301,17 @@ fun ImageThumbnail(
     val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
         value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
     }
+    val context = LocalContext.current
+    val imageKey = "media-$index"
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
     ){
         AsyncImage(
-            model = thumbnail,
+            model = ImageRequest.Builder(context)
+                .data(thumbnail)
+                .memoryCacheKey(imageKey)
+                .build(),
             contentDescription = "",
             modifier = Modifier
                 .height(150.dp)

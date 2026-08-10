@@ -2,6 +2,8 @@ package com.example.homealbum.ui
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -41,26 +44,49 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
-    onBackFabPressed: () -> Unit
+    onBackFabPressed: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
 ){
-    Log.d("Mati", "Settings screen: Composing...")
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(onClick = onBackFabPressed) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Back"
+    var isNavigating by remember { mutableStateOf(false) }
+    with(sharedTransitionScope){
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        if (!isNavigating){
+                            isNavigating = true
+                            onBackFabPressed()
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Back"
+                    )
+                }
+            }
+        ) {innerPadding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(
+                            key = "settings-screen"
+                        ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+            ) {
+                SettingItemCard(
+                    settingsViewModel = settingsViewModel,
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
+
         }
-    ) {innerPadding ->
-        Log.d("Mati", "Settings screen: Drawing content")
-        SettingItemCard(
-            settingsViewModel = settingsViewModel,
-            modifier = Modifier.padding(innerPadding)
-        )
     }
+
 }
 @Composable
 fun SettingItemCard(

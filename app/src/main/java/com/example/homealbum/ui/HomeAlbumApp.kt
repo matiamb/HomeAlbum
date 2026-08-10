@@ -3,6 +3,8 @@ package com.example.homealbum.ui
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -33,47 +35,56 @@ fun HomeAlbumApp(
 
     val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
     val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
-    NavHost(
-        navController = navController,
-        startDestination = AppScreens.GALLERY_START.name,
-        modifier = Modifier.fillMaxSize(),
-        enterTransition = { slideInHorizontally(initialOffsetX = {it})},
-        exitTransition = { slideOutHorizontally(targetOffsetX = {-it})},
-        popEnterTransition = {slideInHorizontally(initialOffsetX = {-it})},
-        popExitTransition = {slideOutHorizontally(targetOffsetX = {it})}
-    ){
-        composable(
-            route = AppScreens.GALLERY_START.name
+    SharedTransitionLayout() {
+        NavHost(
+            navController = navController,
+            startDestination = AppScreens.GALLERY_START.name,
+            modifier = Modifier.fillMaxSize(),
+            enterTransition = { fadeIn() },
+            exitTransition = { fadeOut() }
+//            popEnterTransition = {slideInHorizontally(initialOffsetX = {-it})},
+//            popExitTransition = {slideOutHorizontally(targetOffsetX = {it})}
         ){
-            GalleryScreen(
-                galleryViewModel = galleryViewModel,
-                onSettingsFabClicked = {
-                    navController.navigate(AppScreens.SETTINGS.name)
-                },
-                onImageClicked = { index ->
-                    navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
-                }
-            )
-        }
-        composable(
-            route = AppScreens.SETTINGS.name
-        ){
-            SettingsScreen(
-                settingsViewModel = settingsViewModel,
-                onBackFabPressed = {navController.popBackStack()}
-            )
-        }
-        composable(
-            route = "${AppScreens.IMAGE_VIEW.name}/{index}",
-            arguments = listOf(navArgument("index") { type = NavType.IntType })
-        ) { navBackStackEntry ->
-            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
-            ImageScreen(
-                galleryViewModel = galleryViewModel,
-                initialPageIndex = index,
-                onBackFabClicked = {navController.popBackStack()},
-                onLastPhotoDeleted = {navController.popBackStack()}
-            )
+            composable(
+                route = AppScreens.GALLERY_START.name
+            ){
+                GalleryScreen(
+                    galleryViewModel = galleryViewModel,
+                    onSettingsFabClicked = {
+                        navController.navigate(AppScreens.SETTINGS.name)
+                    },
+                    onImageClicked = { index ->
+                        navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
+                    },
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@composable
+                )
+            }
+            composable(
+                route = AppScreens.SETTINGS.name
+            ){
+                SettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onBackFabPressed = {navController.popBackStack()},
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@composable
+                )
+            }
+            composable(
+                route = "${AppScreens.IMAGE_VIEW.name}/{index}",
+                arguments = listOf(navArgument("index") { type = NavType.IntType })
+            ) { navBackStackEntry ->
+                val index = navBackStackEntry.arguments?.getInt("index") ?: 0
+                ImageScreen(
+                    galleryViewModel = galleryViewModel,
+                    initialPageIndex = index,
+                    onBackFabClicked = {navController.popBackStack()},
+                    onLastPhotoDeleted = {navController.popBackStack()},
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@composable
+                )
+            }
         }
     }
+
 }
