@@ -257,10 +257,11 @@ fun ImageRoll(
                                 }
                             )
                         }
-                        .sharedElement(sharedContentState = rememberSharedContentState
-                            (
-                            key = "media-$page"
-                                    ),
+                        .sharedElement(
+                            sharedContentState = rememberSharedContentState
+                                (
+                                key = "media-$page"
+                            ),
                             animatedVisibilityScope = animatedVisibilityScope
                         )
                     ,contentScale = ContentScale.Fit
@@ -308,7 +309,16 @@ fun BottomToolbar(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onBackFabClicked) {
+            var isNavigating by remember { mutableStateOf(false) }
+            FloatingActionButton(
+                onClick = {
+                    if (!isNavigating){
+                        isNavigating = true
+                        onBackFabClicked()
+                    }
+
+                }
+            ) {
                 Icon(
                     Icons.Default.ArrowBack,
                     contentDescription = "Back"
