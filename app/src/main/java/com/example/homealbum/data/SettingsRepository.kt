@@ -54,7 +54,7 @@ class OfflineSettingsRepository(
 
     override suspend fun checkServerConnection(serverIp: String): Response<ResponseBody> =
         withContext(Dispatchers.IO){
-            val endpoint = "http://$serverIp:8080/api/v1/media/ping"
+            val endpoint = "http://$serverIp/api/v1/media/ping"
             serverApiService.checkServerConnection(endpoint)
         }
 }

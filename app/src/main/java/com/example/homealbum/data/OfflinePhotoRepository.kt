@@ -55,7 +55,6 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
             argumentSelection,
             displayOrder
         )?.use { cursor ->
-//            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
 

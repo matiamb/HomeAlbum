@@ -22,12 +22,12 @@
     <string name="failed_to_load_local_photos_msg">Failed to load local photos</string>
     <string name="enable_local_server_backup">Enable local server backup?</string>
     <string name="settings">Settings</string>
-    <string name="please_enter_the_server_ip">Please enter the server ip</string>
-    <string name="example_ip_msg">Example: 100.0.0.1</string>
+    <string name="please_enter_the_server_ip">Please enter the server ip and port number</string>
+    <string name="example_ip_msg">Example: 100.0.0.1:8080</string>
     <string name="please_enter_the_folder_name">Please enter the folder name</string>
     <string name="example_folder_msg">Example: Folder/subFolder</string>
     <string name="save_btn">Save</string>
-    <string name="checking_btn">Checking...</string>
+    <string name="checking_btn">Checking…</string>
     <string name="server_connection_failed">Server connection failed</string>
     <string name="server_connection_ok">Server connection OK!</string>
     <string name="starting_upload">Starting upload</string>

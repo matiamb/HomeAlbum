@@ -170,7 +170,6 @@ fun SettingItemCard(
                         text = stringResource(R.string.example_ip_msg)
                     )
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 enabled = settingsState.value.isBackupEnabled,
                 maxLines = 1
             )
