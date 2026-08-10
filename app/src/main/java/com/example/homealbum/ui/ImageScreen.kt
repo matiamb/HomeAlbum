@@ -54,10 +54,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -69,6 +71,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.homealbum.R
 import kotlinx.coroutines.launch
 
 @Composable
@@ -178,7 +181,7 @@ fun ImageRoll(
             userScrollEnabled = !isZoomed,
             modifier = modifier
                 .fillMaxSize()
-                .background(color = MaterialTheme.colorScheme.inverseOnSurface)
+                .background(color = Color.Black)
                 .pointerInput(Unit) {
                     //Este detect transform gestures va aca por que si no sobreescribe el gesto de swipe para pasar de foto
                     //del pager, entonces si lo pongo aca funciona bien
@@ -293,14 +296,14 @@ fun BottomToolbar(
             }
             IconButton(onClick = onUploadClicked) {
                 Icon(
-                    Icons.Filled.KeyboardArrowUp,
+                    painterResource(R.drawable.outline_cloud_upload_24),
                     contentDescription = "Upload"
                 )
             }
             IconButton(onClick = checkPhotoIsUploaded) {
                 Icon(
-                    Icons.Filled.Info,
-                    ""
+                    painterResource(R.drawable.outline_cloud_alert_24),
+                    "Check if file is in the server"
                 )
             }
         },

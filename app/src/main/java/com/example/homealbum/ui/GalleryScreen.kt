@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,9 +30,13 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -48,7 +53,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -106,6 +113,7 @@ import com.example.homealbum.model.MediaItem
 //        }
 //    }
 //}
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun GalleryScreen(
@@ -115,14 +123,17 @@ fun GalleryScreen(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ){
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     Scaffold(
-        topBar = {GalleryTopBar()},
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {SettingsFab(
-            onSettingsFabClicked,
-            sharedTransitionScope,
-            animatedVisibilityScope
-        )}
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {GalleryTopBar(scrollBehavior)},
+        floatingActionButton = {
+            SettingsFab(
+                onSettingsFabClicked,
+                sharedTransitionScope,
+                animatedVisibilityScope
+            )
+        },
     ) { innerPadding ->
         val context = LocalContext.current
 
@@ -260,13 +271,23 @@ fun SettingsFab(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GalleryTopBar(){
+private fun GalleryTopBar(
+    scrollBehavior: TopAppBarScrollBehavior
+){
     CenterAlignedTopAppBar(
         title = {
             Text(
-                text = stringResource(R.string.app_name)
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.displayMedium
             )
-        }
+        },
+        navigationIcon = {
+            Image(
+                painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = ""
+            )
+        },
+        scrollBehavior = scrollBehavior
     )
 }
 
