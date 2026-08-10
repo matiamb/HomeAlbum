@@ -24,8 +24,6 @@ interface ServerApiService{
         @Part file: MultipartBody.Part,
         @Url savedUrl: String,
         @Query("fileHash") fileHash: String?,
-        //@Part("mimeType") mimeType: RequestBody,
-        //@Part("fileName") fileName: RequestBody,
         @Part("folderName") folderName: RequestBody
     ): Response<ResponseBody>
     @GET

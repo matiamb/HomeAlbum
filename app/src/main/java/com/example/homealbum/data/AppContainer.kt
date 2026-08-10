@@ -4,10 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import okhttp3.Response
 import retrofit2.Retrofit
 
 interface AppContainer {
@@ -18,25 +14,9 @@ interface AppContainer {
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
-
-//    private val mockServerInterceptor = Interceptor { chain ->
-//        val request = chain.request()
-//        Thread.sleep(1000)
-//        Response.Builder()
-//            .code(404)
-//            .request(request)
-//            .message("Ok")
-//            .protocol(Protocol.HTTP_1_1)
-//            .build()
-//    }
-//    private val okHttpClient = OkHttpClient.Builder()
-//        .addInterceptor(mockServerInterceptor)
-//        .build()
-
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("http://localhost")
-            //.client(okHttpClient)
             .build()
     }
     private val retrofitService: ServerApiService by lazy {
@@ -59,5 +39,7 @@ class DefaultAppContainer(context: Context) : AppContainer{
             context = context
         )
     }
-    override val workManager: WorkManager = WorkManager.getInstance(context)
+    override val workManager: WorkManager by lazy{
+        WorkManager.getInstance(context)
+    }
 }

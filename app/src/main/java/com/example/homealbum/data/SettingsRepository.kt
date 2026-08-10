@@ -9,7 +9,6 @@ import com.example.homealbum.model.UserSettings
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
@@ -54,7 +53,7 @@ class OfflineSettingsRepository(
 
     override suspend fun checkServerConnection(serverIp: String): Response<ResponseBody> =
         withContext(Dispatchers.IO){
-            val endpoint = "http://$serverIp:8080/api/v1/media/ping"
+            val endpoint = "http://$serverIp/api/v1/media/ping"
             serverApiService.checkServerConnection(endpoint)
         }
 }

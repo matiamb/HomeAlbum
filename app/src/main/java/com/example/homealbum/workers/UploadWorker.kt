@@ -24,14 +24,15 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     override suspend fun doWork(): Result {
         val uriString = inputData.getString(KEY_URI) ?: return Result.failure()
         val uri = uriString.toUri()
-        makeNotification(applicationContext, "Starting upload")
+        makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         return try {
             val serverResponse = photoRepository.uploadPhoto(uri)
             if (serverResponse.isSuccessful){
                 makeNotification(applicationContext, serverResponse.body()?.string())
                 Result.success()
             } else {
-                makeNotification(applicationContext, "File could not be uploaded: ${serverResponse.errorBody()?.string()}")
+                makeNotification(applicationContext,
+                    applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.errorBody()?.string()}")
                 Result.failure()
             }
         } catch (e: IOException){
@@ -43,8 +44,8 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     }
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun makeNotification(context: Context, message: String?){
-        val name = "Upload notification"
-        val description = "Posts notifications of the status of an upload"
+        val name = context.getString(R.string.upload_notification_channel_name)
+        val description = context.getString(R.string.upload_notification_channel_description)
         val importance = NotificationManager.IMPORTANCE_HIGH
         val channel = NotificationChannel("Upload_notifications", name, importance)
         channel.description = description
@@ -53,7 +54,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         notificationManager?.createNotificationChannel(channel)
         val builder = NotificationCompat.Builder(context, "Upload_notifications")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Upload status")
+            .setContentTitle(context.getString(R.string.upload_status_notification_title))
             .setContentText(message)
 
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
