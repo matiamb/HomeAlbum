@@ -128,7 +128,7 @@ fun SettingItemCard(
             Text(
                 text = "Settings",
                 modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.displayMedium
+                style = MaterialTheme.typography.displayLarge
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -179,6 +179,11 @@ fun SettingItemCard(
                 label = {
                     Text(
                         text = "Please enter the folder name"
+                    )
+                },
+                placeholder = {
+                    Text(
+                        text = "Example: Folder/subFolder"
                     )
                 },
                 enabled = settingsState.value.isBackupEnabled,
