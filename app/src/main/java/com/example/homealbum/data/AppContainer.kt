@@ -4,10 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import okhttp3.Response
 import retrofit2.Retrofit
 
 interface AppContainer {
@@ -21,7 +17,6 @@ class DefaultAppContainer(context: Context) : AppContainer{
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("http://localhost")
-            //.client(okHttpClient)
             .build()
     }
     private val retrofitService: ServerApiService by lazy {
@@ -44,5 +39,7 @@ class DefaultAppContainer(context: Context) : AppContainer{
             context = context
         )
     }
-    override val workManager: WorkManager = WorkManager.getInstance(context)
+    override val workManager: WorkManager by lazy{
+        WorkManager.getInstance(context)
+    }
 }

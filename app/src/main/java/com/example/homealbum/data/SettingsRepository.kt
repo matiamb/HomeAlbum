@@ -9,7 +9,6 @@ import com.example.homealbum.model.UserSettings
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody

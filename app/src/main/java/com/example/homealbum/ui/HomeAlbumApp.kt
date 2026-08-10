@@ -2,13 +2,9 @@ package com.example.homealbum.ui
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -30,9 +26,6 @@ enum class AppScreens{
 fun HomeAlbumApp(
     navController: NavHostController = rememberNavController()
 ){
-//    val context = LocalContext.current
-//    val photoRepository = PhotoRepository(context)
-
     val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
     val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
     SharedTransitionLayout() {
@@ -42,8 +35,6 @@ fun HomeAlbumApp(
             modifier = Modifier.fillMaxSize(),
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() }
-//            popEnterTransition = {slideInHorizontally(initialOffsetX = {-it})},
-//            popExitTransition = {slideOutHorizontally(targetOffsetX = {it})}
         ){
             composable(
                 route = AppScreens.GALLERY_START.name
