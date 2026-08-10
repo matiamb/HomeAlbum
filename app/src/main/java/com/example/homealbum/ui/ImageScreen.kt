@@ -9,6 +9,10 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.background
@@ -64,6 +68,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,6 +77,8 @@ fun ImageScreen(
     initialPageIndex: Int,
     onBackFabClicked: () -> Unit,
     onLastPhotoDeleted: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
     val uiState = galleryViewModel.galleryUiState.collectAsState()
@@ -133,6 +140,8 @@ fun ImageScreen(
         ImageRoll(
             uiState,
             pagerState,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope,
             modifier = Modifier.padding(paddingValues)
         )
         if (openAlertDialog.value){
@@ -156,83 +165,107 @@ fun ImageScreen(
 fun ImageRoll(
     uiState: State<GalleryUiState>,
     pagerState: PagerState,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
     var scale by remember { mutableFloatStateOf(1f)}
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isZoomed by remember { mutableStateOf(false) }
-    HorizontalPager(
-        state = pagerState,
-        userScrollEnabled = !isZoomed,
-        modifier = modifier
-            .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.inverseOnSurface)
-            .pointerInput(Unit) {
-                //Este detect transform gestures va aca por que si no sobreescribe el gesto de swipe para pasar de foto
-                //del pager, entonces si lo pongo aca funciona bien
-                detectTransformGestures { _, pan, zoom, _ ->
-                    //el coerceIn lo que hace es limitar el valor entre los limites que yo le pongo
-                    scale = (scale * zoom).coerceIn(1f, 3f)
-                    //esto es para calcular cuanto puedo desplazar la foto una vez tenga el zoom hecho
-                    val maxPanX = (size.width * (scale - 1)) / 2
-                    val maxPanY = (size.height * (scale - 1)) / 2
-                    offset = Offset(
-                        x = (offset.x + pan.x * scale).coerceIn(-maxPanX, maxPanX),
-                        y = (offset.y + pan.y * scale).coerceIn(-maxPanY, maxPanY)
-                    )
-                }
-            }
-    ) { page ->
-        val mediaItem = uiState.value.photoList[page]
-        val isCurrentPage = pagerState.currentPage == page
-// Esto es para que haga una animacion cada vez que haya zoom
-        val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
-        val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
-        //Este launched effect es para que protegerme de un bucle infinito, es decir que
-        //se va a activar esta parte del codigo cuando el scale sufra algun cambio
-        LaunchedEffect(scale) {
-               isZoomed = scale > 1f
-        }
-        if (mediaItem.isVideo){
-            VideoPlayer(
-                uri = mediaItem.uri,
-                isPlaying = isCurrentPage
-            )
-        } else {
-            AsyncImage(
-                model = mediaItem.uri,
-                contentDescription = "",
-                modifier = Modifier
-                    .fillMaxSize()
-                    //aca le digo a la gpu que animaciones hacer en los cambio de escala
-                    .graphicsLayer(
-                        scaleX = animatedScale,
-                        scaleY = animatedScale,
-                        translationX = animatedOffset.x,
-                        translationY = animatedOffset.y
-                    )
-                    //El pointer input es lo que detecta los toques en la pantalla, en este caso
-                    //dentro uso el detect tap gestures para que detecte el double tap
-                    //luego dentro tengo la logica para los limites de pantalla
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                if (scale > 1f) {
-                                    scale = 1f
-                                    offset = Offset.Zero
-                                } else {
-                                    scale = 2f
-                                    val targetOffsetX = (size.width / 2 - it.x) * scale
-                                    val targetOffsetY = (size.height / 2 - it.y) * scale
-                                    offset = Offset(targetOffsetX, targetOffsetY)
-                                }
-                            }
+    with(sharedTransitionScope){
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = !isZoomed,
+            modifier = modifier
+                .fillMaxSize()
+                .background(color = MaterialTheme.colorScheme.inverseOnSurface)
+                .pointerInput(Unit) {
+                    //Este detect transform gestures va aca por que si no sobreescribe el gesto de swipe para pasar de foto
+                    //del pager, entonces si lo pongo aca funciona bien
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        //el coerceIn lo que hace es limitar el valor entre los limites que yo le pongo
+                        scale = (scale * zoom).coerceIn(1f, 3f)
+                        //esto es para calcular cuanto puedo desplazar la foto una vez tenga el zoom hecho
+                        val maxPanX = (size.width * (scale - 1)) / 2
+                        val maxPanY = (size.height * (scale - 1)) / 2
+                        offset = Offset(
+                            x = (offset.x + pan.x * scale).coerceIn(-maxPanX, maxPanX),
+                            y = (offset.y + pan.y * scale).coerceIn(-maxPanY, maxPanY)
                         )
                     }
-                ,contentScale = ContentScale.Fit
-            )
+                }
+        ) { page ->
+            val mediaItem = uiState.value.photoList[page]
+            val isCurrentPage = pagerState.currentPage == page
+// Esto es para que haga una animacion cada vez que haya zoom
+            val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
+            val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
+            val context = LocalContext.current
+            val imageKey = "media-$page"
+            val fullImageKey = "media-${mediaItem}"
+            //Este launched effect es para que protegerme de un bucle infinito, es decir que
+            //se va a activar esta parte del codigo cuando el scale sufra algun cambio
+            LaunchedEffect(scale) {
+                isZoomed = scale > 1f
+            }
+            if (mediaItem.isVideo){
+                VideoPlayer(
+                    uri = mediaItem.uri,
+                    isPlaying = isCurrentPage,
+                    modifier = Modifier.sharedElement(sharedContentState = rememberSharedContentState
+                        (
+                        key = "media-$page"
+                    ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+                )
+            } else {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(mediaItem.uri)
+                        .placeholderMemoryCacheKey(imageKey)
+                        .memoryCacheKey(fullImageKey)
+                        .build(),
+                    contentDescription = "",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        //aca le digo a la gpu que animaciones hacer en los cambio de escala
+                        .graphicsLayer(
+                            scaleX = animatedScale,
+                            scaleY = animatedScale,
+                            translationX = animatedOffset.x,
+                            translationY = animatedOffset.y
+                        )
+                        //El pointer input es lo que detecta los toques en la pantalla, en este caso
+                        //dentro uso el detect tap gestures para que detecte el double tap
+                        //luego dentro tengo la logica para los limites de pantalla
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (scale > 1f) {
+                                        scale = 1f
+                                        offset = Offset.Zero
+                                    } else {
+                                        scale = 2f
+                                        val targetOffsetX = (size.width / 2 - it.x) * scale
+                                        val targetOffsetY = (size.height / 2 - it.y) * scale
+                                        offset = Offset(targetOffsetX, targetOffsetY)
+                                    }
+                                }
+                            )
+                        }
+                        .sharedElement(sharedContentState = rememberSharedContentState
+                            (
+                            key = "media-$page"
+                                    ),
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )
+                    ,contentScale = ContentScale.Fit
+                )
+            }
         }
     }
+
 }
 
 @Composable
