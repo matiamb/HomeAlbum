@@ -270,7 +270,7 @@ fun ImageThumbnail(
         value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
     }
     val context = LocalContext.current
-    val imageKey = "media-$index"
+    val imageKey = "media-$index-${mediaItem.uri}"
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
