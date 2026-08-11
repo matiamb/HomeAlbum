@@ -193,7 +193,7 @@ fun ImageRoll(
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
             val context = LocalContext.current
-            val imageKey = "media-$page"
+            val imageKey = "media-$page-${mediaItem.uri}"
             val fullImageKey = "media-${mediaItem}"
             //Este launched effect es para que protegerme de un bucle infinito, es decir que
             //se va a activar esta parte del codigo cuando el scale sufra algun cambio
