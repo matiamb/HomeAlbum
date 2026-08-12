@@ -111,16 +111,20 @@ class SettingsViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun saveServerSettings_serverConnectionFailed_emitsExpectedToast(){
+    fun saveServerSettings_serverConnectionFailed_emitsExpectedToast_andSettingsAreNotSaved(){
         runTest {
+            val serverIpToSave = "100.0.0.1"
+            val folderNameToSave = "Test Folder"
             fakeSettingsRepository.setConnectionResult(false)
-            settingsViewModelTest.saveServerSettings("", "")
+            settingsViewModelTest.saveServerSettings(serverIpToSave, folderNameToSave)
             val toastFlow = backgroundScope.launch {
                 val toast = settingsViewModelTest.toastMessage.first()
                 assertEquals(R.string.server_connection_failed, toast.message)
             }
             advanceUntilIdle()
+            val serverSettings = fakeSettingsRepository.userSettingsFlow.first()
+            assertEquals("", serverSettings.serverIp)
+            assertEquals("", serverSettings.serverFolderName)
         }
-
     }
 }
