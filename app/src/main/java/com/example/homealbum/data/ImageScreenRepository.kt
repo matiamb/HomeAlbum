@@ -18,7 +18,7 @@ import okio.source
 import retrofit2.Response
 import java.security.MessageDigest
 
-interface ConnectedPhotoRepository {
+interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
     suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
     suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody>
@@ -28,7 +28,7 @@ class NetworkPhotoRepository(
     private val serverApiService: ServerApiService,
     private val offlineSettingsRepository: OfflineSettingsRepository,
     private val context: Context
-) : ConnectedPhotoRepository{
+) : ImageScreenRepository{
 
     override suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody> = withContext(Dispatchers.IO){
         val fileHash = getFileHash(uri)
