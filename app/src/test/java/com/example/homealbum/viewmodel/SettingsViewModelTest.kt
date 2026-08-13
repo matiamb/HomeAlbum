@@ -61,7 +61,9 @@ class FakeSettingsRepository : SettingsRepository{
     }
 
     override suspend fun saveBackupEnabled(isBackupEnabled: Boolean) {
-        TODO("Not yet implemented")
+        _userSettingsFlow.value = _userSettingsFlow.value.copy(
+            isBackupEnabled = isBackupEnabled
+        )
     }
 
     override suspend fun checkServerConnection(serverIp: String): Response<ResponseBody> {
@@ -111,7 +113,7 @@ class SettingsViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun saveServerSettings_serverConnectionFailed_emitsExpectedToast_andSettingsAreNotSaved(){
+    fun saveServerSettings_serverConnectionFailed_emitsExpectedToastAndSettingsAreNotSaved(){
         runTest {
             val serverIpToSave = "100.0.0.1"
             val folderNameToSave = "Test Folder"

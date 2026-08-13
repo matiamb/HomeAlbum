@@ -26,7 +26,7 @@ interface ImageScreenRepository {
 
 class NetworkPhotoRepository(
     private val serverApiService: ServerApiService,
-    private val offlineSettingsRepository: OfflineSettingsRepository,
+    private val offlineSettingsRepository: SettingsRepository,
     private val context: Context
 ) : ImageScreenRepository{
 
