@@ -39,7 +39,6 @@ class GalleryViewModel(
     private val photosRepo: PhotoRepository,
     private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
-//    private val workManager: WorkManager
     private val uploadScheduler: UploadScheduler
 ) : ViewModel() {
 
@@ -116,20 +115,8 @@ class GalleryViewModel(
     fun uploadPhoto(
         uri: Uri
     ){
-//        val constraints= Constraints.Builder()
-//            .setRequiredNetworkType(NetworkType.UNMETERED)
-//            .setRequiresBatteryNotLow(true)
-//            .build()
-//        val request = OneTimeWorkRequestBuilder<UploadWorker>()
-//            .addTag("upload")
-//            .setConstraints(constraints)
-//            .setInputData(
-//                workDataOf(UploadWorker.KEY_URI to uri.toString())
-//            )
-//            .build()
         viewModelScope.launch {
             if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-//                workManager.enqueue(request)
                 uploadScheduler.scheduleUpload(uri)
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))

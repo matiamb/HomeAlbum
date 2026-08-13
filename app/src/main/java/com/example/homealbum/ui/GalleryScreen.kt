@@ -302,8 +302,6 @@ private fun openPermissionSettings(context: Context){
     context.startActivity(intent)
 }
 
-
-
 @Preview(showSystemUi = true)
 @Composable
 private fun RequestPermissionPreview(){

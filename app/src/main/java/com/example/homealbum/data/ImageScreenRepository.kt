@@ -67,7 +67,7 @@ class NetworkPhotoRepository(
             }
 
         }
-        val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)//the file string has to be the same as the one the server expects
+        val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)
 
         serverApiService.uploadPhoto(
             file = filePart,
