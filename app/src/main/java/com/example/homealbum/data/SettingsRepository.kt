@@ -15,6 +15,7 @@ import okhttp3.ResponseBody
 import retrofit2.Response
 
 interface SettingsRepository {
+    val userSettingsFlow: Flow<UserSettings>
     suspend fun saveServerSettings(ip: String, folderName: String)
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
     suspend fun checkServerConnection(serverIp: String): Response<ResponseBody>
@@ -30,7 +31,7 @@ class OfflineSettingsRepository(
         val IS_BACKUP_ENABLED = booleanPreferencesKey(name = "is_backup_enabled")
     }
 
-    val userSettingsFlow: Flow<UserSettings> = dataStore.data.map { preferences ->
+    override val userSettingsFlow: Flow<UserSettings> = dataStore.data.map { preferences ->
         UserSettings(
             serverIp = preferences[PreferencesKeys.SERVER_IP] ?: "",
             serverFolderName = preferences[PreferencesKeys.FOLDER_NAME] ?: "",

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.data.OfflineSettingsRepository
+import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.UserSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SettingsViewModel(private val settingsRepository: OfflineSettingsRepository) : ViewModel() {
+class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
     val uiState: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
@@ -37,6 +38,8 @@ class SettingsViewModel(private val settingsRepository: OfflineSettingsRepositor
                     _toastMessage.emit(ToastText(message = R.string.server_connection_ok))
                     settingsRepository.saveServerSettings(ip, folderName)
                     _isChecking.value = false
+                } else {
+                    _toastMessage.emit(ToastText(message = R.string.server_connection_failed))
                 }
             } catch (e: Exception){
                 _toastMessage.emit(ToastText(message = R.string.server_connection_failed))

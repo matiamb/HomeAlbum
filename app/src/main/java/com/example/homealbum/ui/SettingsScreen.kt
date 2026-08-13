@@ -168,7 +168,7 @@ fun SettingItemCard(
                     )
                 },
                 enabled = settingsState.value.isBackupEnabled,
-                maxLines = 1
+                singleLine = true
             )
             TextField(
                 value = textFolderName,
