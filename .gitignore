@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.apk
+*.dm
+output-metadata.json
+*.jks
+*.keystore
+keystore.properties

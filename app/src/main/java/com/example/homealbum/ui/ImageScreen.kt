@@ -172,12 +172,8 @@ fun ImageRoll(
                 .fillMaxSize()
                 .background(color = Color.Black)
                 .pointerInput(Unit) {
-                    //Este detect transform gestures va aca por que si no sobreescribe el gesto de swipe para pasar de foto
-                    //del pager, entonces si lo pongo aca funciona bien
                     detectTransformGestures { _, pan, zoom, _ ->
-                        //el coerceIn lo que hace es limitar el valor entre los limites que yo le pongo
                         scale = (scale * zoom).coerceIn(1f, 3f)
-                        //esto es para calcular cuanto puedo desplazar la foto una vez tenga el zoom hecho
                         val maxPanX = (size.width * (scale - 1)) / 2
                         val maxPanY = (size.height * (scale - 1)) / 2
                         offset = Offset(
@@ -189,14 +185,11 @@ fun ImageRoll(
         ) { page ->
             val mediaItem = uiState.value.photoList[page]
             val isCurrentPage = pagerState.currentPage == page
-// Esto es para que haga una animacion cada vez que haya zoom
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
             val context = LocalContext.current
             val imageKey = "media-$page-${mediaItem.uri}"
             val fullImageKey = "media-${mediaItem}"
-            //Este launched effect es para que protegerme de un bucle infinito, es decir que
-            //se va a activar esta parte del codigo cuando el scale sufra algun cambio
             LaunchedEffect(scale) {
                 isZoomed = scale > 1f
             }
@@ -221,16 +214,12 @@ fun ImageRoll(
                     contentDescription = "",
                     modifier = Modifier
                         .fillMaxSize()
-                        //aca le digo a la gpu que animaciones hacer en los cambio de escala
                         .graphicsLayer(
                             scaleX = animatedScale,
                             scaleY = animatedScale,
                             translationX = animatedOffset.x,
                             translationY = animatedOffset.y
                         )
-                        //El pointer input es lo que detecta los toques en la pantalla, en este caso
-                        //dentro uso el detect tap gestures para que detecte el double tap
-                        //luego dentro tengo la logica para los limites de pantalla
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onDoubleTap = {

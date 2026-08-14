@@ -4,13 +4,16 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
+import com.example.homealbum.workers.UploadScheduler
+import com.example.homealbum.workers.WorkManagerUploadScheduler
 import retrofit2.Retrofit
 
 interface AppContainer {
-    val offlinePhotoRepository: OfflinePhotoRepository
-    val offlineSettingsRepository: OfflineSettingsRepository
-    val networkPhotoRepository: NetworkPhotoRepository
+    val offlinePhotoRepository: PhotoRepository
+    val offlineSettingsRepository: SettingsRepository
+    val networkPhotoRepository: ImageScreenRepository
     val workManager: WorkManager
+    val uploadScheduler: UploadScheduler
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
@@ -23,16 +26,16 @@ class DefaultAppContainer(context: Context) : AppContainer{
         retrofit.create(ServerApiService::class.java)
     }
 
-    override val offlinePhotoRepository: OfflinePhotoRepository by lazy {
+    override val offlinePhotoRepository: PhotoRepository by lazy {
         OfflinePhotoRepository(context = context)
     }
-    override val offlineSettingsRepository: OfflineSettingsRepository by lazy {
+    override val offlineSettingsRepository: SettingsRepository by lazy {
         OfflineSettingsRepository(
             dataStore = context.dataStore,
             serverApiService = retrofitService
         )
     }
-    override val networkPhotoRepository: NetworkPhotoRepository by lazy {
+    override val networkPhotoRepository: ImageScreenRepository by lazy {
         NetworkPhotoRepository(
             serverApiService = retrofitService,
             offlineSettingsRepository = offlineSettingsRepository,
@@ -41,5 +44,8 @@ class DefaultAppContainer(context: Context) : AppContainer{
     }
     override val workManager: WorkManager by lazy{
         WorkManager.getInstance(context)
+    }
+    override val uploadScheduler: UploadScheduler by lazy {
+        WorkManagerUploadScheduler(workManager = workManager)
     }
 }

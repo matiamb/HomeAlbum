@@ -14,13 +14,14 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0-beta.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            isDebuggable = false
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -62,6 +63,8 @@ dependencies {
     implementation(libs.logging.interceptor)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

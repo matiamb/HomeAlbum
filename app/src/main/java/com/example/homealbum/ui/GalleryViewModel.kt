@@ -24,18 +24,22 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.homealbum.R
+import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.NetworkPhotoRepository
 import com.example.homealbum.data.OfflineSettingsRepository
+import com.example.homealbum.data.PhotoRepository
+import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.workers.UploadScheduler
 import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 
 class GalleryViewModel(
-    private val photosRepo: OfflinePhotoRepository,
-    private val networkPhotoRepository: NetworkPhotoRepository,
-    private val settingsRepository: OfflineSettingsRepository,
-    private val workManager: WorkManager
+    private val photosRepo: PhotoRepository,
+    private val networkPhotoRepository: ImageScreenRepository,
+    private val settingsRepository: SettingsRepository,
+    private val uploadScheduler: UploadScheduler
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -111,21 +115,9 @@ class GalleryViewModel(
     fun uploadPhoto(
         uri: Uri
     ){
-        val constraints= Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.UNMETERED)
-            .setRequiresBatteryNotLow(true)
-            .build()
-        val request = OneTimeWorkRequestBuilder<UploadWorker>()
-            .addTag("upload")
-            .setConstraints(constraints)
-            .setInputData(
-                workDataOf(UploadWorker.KEY_URI to uri.toString())
-            )
-            .build()
-
         viewModelScope.launch {
             if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-                workManager.enqueue(request)
+                uploadScheduler.scheduleUpload(uri)
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
@@ -160,7 +152,7 @@ class GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
                     settingsRepository,
-                    application.container.workManager
+                    application.container.uploadScheduler
                     )
             }
         }
