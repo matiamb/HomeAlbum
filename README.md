@@ -14,9 +14,9 @@ Beta: HomeAlbum is currently in early development and may contain bugs or incomp
 - Background uploads using Android WorkManager
 - Network and battery constraints for background uploads
 
-<img width="280" height="566" alt="Screenshot_20260814_112758_HomeAlbum" src="https://github.com/user-attachments/assets/56c91478-c599-49f0-a341-c991a258ce90" />
-<img width="280" height="566" alt="Screenshot_20260814_112827_HomeAlbum" src="https://github.com/user-attachments/assets/d79b6b87-902d-4e4b-ab0c-9178d0b89df2" />
-<img width="280" height="566" alt="Screenshot_20260814_112853_HomeAlbum" src="https://github.com/user-attachments/assets/fa0d9b01-0c94-4af0-95fa-709f0cea1923" />
+<img width="250" height="505" alt="Screenshot_20260814_112758_HomeAlbum" src="https://github.com/user-attachments/assets/56c91478-c599-49f0-a341-c991a258ce90" />
+<img width="250" height="505" alt="Screenshot_20260814_112827_HomeAlbum" src="https://github.com/user-attachments/assets/d79b6b87-902d-4e4b-ab0c-9178d0b89df2" />
+<img width="250" height="505" alt="Screenshot_20260814_112853_HomeAlbum" src="https://github.com/user-attachments/assets/fa0d9b01-0c94-4af0-95fa-709f0cea1923" />
 
 📱 Requirements
 - Android device
