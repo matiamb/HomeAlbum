@@ -39,7 +39,8 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
         val columns = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.MEDIA_TYPE
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DATE_TAKEN
         )
 
 
@@ -57,17 +58,21 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
         )?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
             val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
                 val mediaType = cursor.getInt(typeColumn)
+                val dateTaken = cursor.getLong(dateColumn)
                 val mediaItem: MediaItem =
                     if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
                         MediaItem(
                             ContentUris.withAppendedId(
                                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                                 id
-                            ), isVideo = false
+                            ),
+                            isVideo = false,
+                            dateTaken = dateTaken
                         )
                     } else {
                         MediaItem(
@@ -75,7 +80,8 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                                 id
                             ),
-                            isVideo = true
+                            isVideo = true,
+                            dateTaken = dateTaken
                         )
                     }
 

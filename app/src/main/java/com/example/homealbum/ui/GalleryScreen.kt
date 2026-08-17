@@ -14,6 +14,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -55,10 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.MediaItem
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -165,27 +170,60 @@ private fun GalleryGrid(
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                itemsIndexed(
-                    items = galleryUiState.value.photoList,
-                    key = {_, uri -> uri.toString()}
-                ){ index, item ->
-                    ImageThumbnail(
-                        mediaItem = item,
-                        galleryViewModel = galleryViewModel,
-                        index = index,
-                        onImageClicked = onImageClicked,
-                        modifier = Modifier.sharedElement(
-                            sharedContentState = rememberSharedContentState(
-                                key = "media-$index"
-                            ),
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
-                    )
+                galleryUiState.value.galleryItems.forEach { item ->
+                    when(item){
+                        is GalleryItem.DateHeader -> {
+                            item(key = "header-${item.date}",
+                                span = { GridItemSpan(maxLineSpan)
+                                }
+                            ){
+                                Text(
+                                    text = item.date.format(
+                                        DateTimeFormatter.ofPattern("dd MMMM yyyy")
+                                    ),
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            }
+                        }
+                        is GalleryItem.Photo -> {
+                            item(key = item.mediaItem.uri){
+                                ImageThumbnail(
+                                    mediaItem = item.mediaItem,
+                                    galleryViewModel = galleryViewModel,
+                                    index = item.originalIndex,
+                                    onImageClicked = onImageClicked,
+                                    modifier = Modifier.sharedElement(
+                                        sharedContentState = rememberSharedContentState(
+                                            key = "media-${item.originalIndex}"
+                                        ),
+                                        animatedVisibilityScope = animatedVisibilityScope
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
+//                itemsIndexed(
+//                    items = galleryUiState.value.photoList,
+//                    key = {_, uri -> uri.toString()}
+//                ){ index, item ->
+//                    ImageThumbnail(
+//                        mediaItem = item,
+//                        galleryViewModel = galleryViewModel,
+//                        index = index,
+//                        onImageClicked = onImageClicked,
+//                        modifier = Modifier.sharedElement(
+//                            sharedContentState = rememberSharedContentState(
+//                                key = "media-$index"
+//                            ),
+//                            animatedVisibilityScope = animatedVisibilityScope
+//                        )
+//                    )
+//                }
             }
         }
     }
