@@ -30,11 +30,13 @@ import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.GalleryItem
+import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 
@@ -42,7 +44,8 @@ class GalleryViewModel(
     private val photosRepo: PhotoRepository,
     private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
-    private val uploadScheduler: UploadScheduler
+    private val uploadScheduler: UploadScheduler,
+    private val deleteScheduler: DeleteScheduler
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -88,32 +91,49 @@ class GalleryViewModel(
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
             val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
-            try {
-                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-                if (isFileInServer.isSuccessful){
-                    networkPhotoRepository.deleteMediaFile(uri)
-                    if (intentSenderRequest != null) {
-                        onIntentReady(intentSenderRequest)
-                    } else {
-                        removeThrashedPhotoFromUi(uri)
-                    }
-                } else {
-                    if (intentSenderRequest != null) {
-                        onIntentReady(intentSenderRequest)
-                    } else {
-                        removeThrashedPhotoFromUi(uri)
-                    }
-                }
-            } catch (e: Exception){
-                if (intentSenderRequest != null) {
-                    onIntentReady(intentSenderRequest)
-                } else {
-                    removeThrashedPhotoFromUi(uri)
-                }
+//            try {
+//                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
+//                if (isFileInServer.isSuccessful){
+//                    networkPhotoRepository.deleteMediaFile(uri)
+//                    if (intentSenderRequest != null) {
+//                        onIntentReady(intentSenderRequest)
+//                    } else {
+//                        removeThrashedPhotoFromUi(uri)
+//                    }
+//                } else {
+//                    if (intentSenderRequest != null) {
+//                        onIntentReady(intentSenderRequest)
+//                    } else {
+//                        removeThrashedPhotoFromUi(uri)
+//                    }
+//                }
+//            } catch (e: Exception){
+//                if (intentSenderRequest != null) {
+//                    onIntentReady(intentSenderRequest)
+//                } else {
+//                    removeThrashedPhotoFromUi(uri)
+//                }
+//            }
+            if (intentSenderRequest != null) {
+                onIntentReady(intentSenderRequest)
+            } else {
+                removeThrashedPhotoFromUi(uri)
             }
         }
     }
-
+    fun removeMediaFromServer(uri: Uri){
+        viewModelScope.launch {
+            try {
+                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
+                if (isFileInServer.isSuccessful){
+                    deleteScheduler.scheduleDelete(uri)
+                }
+            } catch (e: IOException){
+                //_toastMessage.emit(ToastText(message = R.string.connection_error_msg))
+                deleteScheduler.scheduleDelete(uri)
+            }
+        }
+    }
     fun removeThrashedPhotoFromUi(uri: Uri){
         _galleryUiState.update { state ->
             state.copy(photoList = state.photoList.filter { it.uri != uri })
@@ -159,7 +179,8 @@ class GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
                     settingsRepository,
-                    application.container.uploadScheduler
+                    application.container.uploadScheduler,
+                    application.container.deleteScheduler
                     )
             }
         }
