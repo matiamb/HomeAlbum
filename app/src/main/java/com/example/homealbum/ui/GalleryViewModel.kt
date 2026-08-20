@@ -143,8 +143,20 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-                uploadScheduler.scheduleUpload(uri)
+            val userSettings = settingsRepository.userSettingsFlow.first()
+//            when {
+//                userSettings.isBackupEnabled && !userSettings.allowUploadMobileData-> {
+//                    uploadScheduler.scheduleUpload(uri, userSettings.)
+//                }
+//                userSettings.isBackupEnabled && userSettings.allowUploadMobileData -> {
+//                    uploadScheduler.scheduleUploadWithMobileData(uri)
+//                }
+//                else -> {
+//                    _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
+//                }
+//            }
+            if (userSettings.isBackupEnabled){
+                uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
