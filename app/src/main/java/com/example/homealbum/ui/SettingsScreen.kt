@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,8 +38,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
+import com.example.homealbum.model.UserSettings
 
 @Composable
 fun SettingsScreen(
@@ -114,7 +118,7 @@ fun SettingItemCard(
         }
         Column(
             modifier = Modifier
-                .padding(8.dp)
+                .padding(16.dp)
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
@@ -125,35 +129,55 @@ fun SettingItemCard(
             )
             Text(
                 text = stringResource(R.string.settings),
-                modifier = Modifier.padding(start = 8.dp),
+                //modifier = Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.displayLarge
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                Text(
-                    text = stringResource(R.string.enable_local_server_backup)
-                )
-                Switch(
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.SpaceAround
+//            ) {
+                OptionSwitch(
+                    optionText = R.string.enable_local_server_backup,
                     checked = settingsState.value.isBackupEnabled,
-                    onCheckedChange = {
+                    onCheckedChange = {value ->
                         haptic.performHapticFeedback(
                             hapticFeedbackType = HapticFeedbackType.ToggleOn
                         )
-                        settingsViewModel.saveBackupEnabled(it)
-                                      },
-                    thumbContent = {
-                        if (settingsState.value.isBackupEnabled){
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = ""
-                            )
-                        }
+                        settingsViewModel.saveBackupEnabled(value)
                     }
                 )
-            }
+                OptionSwitch(
+                    optionText = R.string.allow_upload_using_mobile_data,
+                    checked = settingsState.value.allowUploadMobileData,
+                    onCheckedChange = {value ->
+                        haptic.performHapticFeedback(
+                            hapticFeedbackType = HapticFeedbackType.ToggleOn
+                        )
+                        settingsViewModel.saveMobileDataUpload(value)
+                    }
+                )
+//                Text(
+//                    text = stringResource(R.string.enable_local_server_backup)
+//                )
+//                Switch(
+//                    checked = settingsState.value.isBackupEnabled,
+//                    onCheckedChange = {
+//                        haptic.performHapticFeedback(
+//                            hapticFeedbackType = HapticFeedbackType.ToggleOn
+//                        )
+//                        settingsViewModel.saveBackupEnabled(it)
+//                                      },
+//                    thumbContent = {
+//                        if (settingsState.value.isBackupEnabled){
+//                            Icon(
+//                                Icons.Filled.Check,
+//                                contentDescription = ""
+//                            )
+//                        }
+//                    }
+//                )
+            //}
             TextField(
                 value = textIp,
                 onValueChange = { newText -> textIp = newText},
@@ -168,7 +192,8 @@ fun SettingItemCard(
                     )
                 },
                 enabled = settingsState.value.isBackupEnabled,
-                singleLine = true
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
             )
             TextField(
                 value = textFolderName,
@@ -184,7 +209,8 @@ fun SettingItemCard(
                     )
                 },
                 enabled = settingsState.value.isBackupEnabled,
-                maxLines = 1
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
             )
             Button(
                 onClick = {
@@ -205,3 +231,50 @@ fun SettingItemCard(
         }
     }
 }
+@Composable
+fun OptionSwitch(
+    optionText: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+)
+{
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = stringResource(optionText)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+//                {
+//                haptic.performHapticFeedback(
+//                    hapticFeedbackType = HapticFeedbackType.ToggleOn
+//                )
+//                onSwitchChange()
+//                //settingsViewModel.saveBackupEnabled(it)
+//            },
+            thumbContent = {
+                if (checked) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = ""
+                    )
+                }
+            }
+        )
+    }
+}
+//@Preview
+//@Composable
+//private fun SettingsScreen(){
+//    SettingsScreen(
+//        settingsViewModel = viewModel<SettingsViewModel>(),
+//        onBackFabPressed = {},
+//        sharedTransitionScope = ,
+//        animatedVisibilityScope =
+//    )
+//}

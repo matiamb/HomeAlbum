@@ -39,4 +39,5 @@
     <string name="share_file_icon_desc">Share file</string>
     <string name="upload_file_icon_desc">Upload file</string>
     <string name="check_if_file_is_in_the_server_icon_desc">Check if file is in the server</string>
+    <string name="allow_upload_using_mobile_data">Allow upload using mobile data?</string>
 </resources>

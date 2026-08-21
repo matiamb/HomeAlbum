@@ -47,7 +47,7 @@ class FakeSettingsRepository : SettingsRepository{
     var shouldThrowException = false
 
     private var _userSettingsFlow = MutableStateFlow(
-        UserSettings("", "", true)
+        UserSettings("", "", true, false)
     )
 
     override val userSettingsFlow: Flow<UserSettings> =
@@ -76,6 +76,11 @@ class FakeSettingsRepository : SettingsRepository{
             Response.error(504, "Server error".toResponseBody())
         }
     }
+
+    override suspend fun saveMobileDataUpload(allowUpload: Boolean) {
+        TODO("Not yet implemented")
+    }
+
     fun setConnectionResult(result: Boolean){
         connectionSuccessful = result
     }

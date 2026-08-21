@@ -9,6 +9,7 @@ import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.model.MediaItem
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.DeleteWorker
@@ -16,7 +17,9 @@ import com.example.homealbum.workers.UploadScheduler
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -93,9 +96,12 @@ class FakeNetworkRepository() : ImageScreenRepository{
 }
 class FakeUploadScheduler() : UploadScheduler {
     var scheduledUri: Uri? = null
-    override fun scheduleUpload(uri: Uri) {
+    var fakeAllowUploadMobilData = false
+    override fun scheduleUpload(uri: Uri, allowUploadMobileData: Boolean) {
         scheduledUri = uri
     }
+
+    override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.IDLE)
 
 }
 

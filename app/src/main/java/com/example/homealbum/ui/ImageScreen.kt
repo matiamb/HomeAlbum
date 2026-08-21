@@ -15,8 +15,10 @@ import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -53,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -64,6 +69,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.R
+import com.example.homealbum.model.UploadStatus
 
 @Composable
 fun ImageScreen(
@@ -106,6 +112,7 @@ fun ImageScreen(
     }
     Scaffold(
         bottomBar = { BottomToolbar(
+            uiState = uiState.value,
             onDeleteClicked = {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
@@ -254,6 +261,7 @@ fun ImageRoll(
 
 @Composable
 fun BottomToolbar(
+    uiState: GalleryUiState,
     onDeleteClicked: () -> Unit,
     onSharedClicked: () -> Unit,
     onBackFabClicked: () -> Unit,
@@ -286,6 +294,23 @@ fun BottomToolbar(
                     painterResource(R.drawable.outline_cloud_alert_24),
                     stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
                 )
+            }
+            IconButton(onClick = {}, enabled = false) {
+                when (uiState.uploadStatus) {
+                    UploadStatus.UPLOADING -> {
+                        CircularProgressIndicator(modifier = Modifier.width(32.dp))
+                    }
+                    UploadStatus.SCHEDULED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_schedule_24),
+                            contentDescription = ""//stringResource(R.string.delete_file_icon_desc)
+                        )
+                    }
+                    UploadStatus.IDLE -> {
+
+                    }
+                }
+
             }
         },
         floatingActionButton = {
@@ -420,7 +445,11 @@ private fun sharePhoto(context: Context, uri: Uri){
 @Preview
 @Composable
 private fun BottomToolbarPreview(){
+    val fakeUiState = GalleryUiState(
+        uploadStatus = UploadStatus.UPLOADING
+    )
     BottomToolbar(
+        uiState = fakeUiState,
         onDeleteClicked = {},
         onSharedClicked = {},
         onBackFabClicked = {},
