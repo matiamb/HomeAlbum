@@ -54,6 +54,9 @@ class GalleryViewModel(
     private val _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
 
+    init {
+        observeUpload()
+    }
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
@@ -179,6 +182,15 @@ class GalleryViewModel(
                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
        }
+    }
+    private fun observeUpload(){
+        viewModelScope.launch {
+            uploadScheduler.uploadStatus.collect { status ->
+                _galleryUiState.update { state ->
+                    state.copy(uploadStatus = status)
+                }
+            }
+        }
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
