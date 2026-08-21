@@ -15,7 +15,6 @@ import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -46,7 +45,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -193,12 +191,46 @@ fun ImageRoll(
                 }
         ) { page ->
             val mediaItem = uiState.value.photoList[page]
-            val isCurrentPage = pagerState.currentPage == page
+            val isCurrentPage = pagerState.settledPage == page
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
             val context = LocalContext.current
             val imageKey = "media-$page-${mediaItem.uri}"
             val fullImageKey = "media-${mediaItem}"
+            val asyncImageModifier = if (isCurrentPage){
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = animatedOffset.x,
+                        translationY = animatedOffset.y
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2f
+                                    val targetOffsetX = (size.width / 2 - it.x) * scale
+                                    val targetOffsetY = (size.height / 2 - it.y) * scale
+                                    offset = Offset(targetOffsetX, targetOffsetY)
+                                }
+                            }
+                        )
+                    }
+                    .sharedElement(
+                        sharedContentState = rememberSharedContentState
+                            (
+                            key = "media-$page"
+                        ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+            } else {
+                Modifier
+            }
             LaunchedEffect(scale) {
                 isZoomed = scale > 1f
             }
@@ -221,36 +253,7 @@ fun ImageRoll(
                         .memoryCacheKey(fullImageKey)
                         .build(),
                     contentDescription = "",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = animatedScale,
-                            scaleY = animatedScale,
-                            translationX = animatedOffset.x,
-                            translationY = animatedOffset.y
-                        )
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    if (scale > 1f) {
-                                        scale = 1f
-                                        offset = Offset.Zero
-                                    } else {
-                                        scale = 2f
-                                        val targetOffsetX = (size.width / 2 - it.x) * scale
-                                        val targetOffsetY = (size.height / 2 - it.y) * scale
-                                        offset = Offset(targetOffsetX, targetOffsetY)
-                                    }
-                                }
-                            )
-                        }
-                        .sharedElement(
-                            sharedContentState = rememberSharedContentState
-                                (
-                                key = "media-$page"
-                            ),
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
+                    modifier = asyncImageModifier
                     ,contentScale = ContentScale.Fit
                 )
             }
