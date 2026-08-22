@@ -1,7 +1,9 @@
 package com.example.homealbum.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -26,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,14 +36,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
+import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
 
 @Composable
@@ -52,6 +58,18 @@ fun SettingsScreen(
     animatedVisibilityScope: AnimatedVisibilityScope
 ){
     var isNavigating by remember { mutableStateOf(false) }
+    val settingsState = settingsViewModel.userSettings.collectAsState()
+    val settingsUiState = settingsViewModel.settingsUiState.collectAsState()
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        settingsViewModel.toastMessage.collect { message ->
+            Toast.makeText(
+                context,
+                message.message,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
     with(sharedTransitionScope){
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -82,7 +100,18 @@ fun SettingsScreen(
                     )
             ) {
                 SettingItemCard(
-                    settingsViewModel = settingsViewModel,
+                    settingsState = settingsState.value,
+                    settingsUiState = settingsUiState.value,
+                    onBackupSwitched = { value ->
+                        settingsViewModel.saveBackupEnabled(value)
+                    },
+                    onMobileDataSwitched = { value ->
+                        settingsViewModel.saveMobileDataUpload(value)
+                    },
+                    onSaveClicked = { textIp, textFolderName ->
+                        settingsViewModel.saveServerSettings(textIp, textFolderName)
+                    },
+                    //isChecking = settingsViewModel.isChecking.value,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -93,13 +122,18 @@ fun SettingsScreen(
 }
 @Composable
 fun SettingItemCard(
-    settingsViewModel: SettingsViewModel,
+    settingsState: UserSettings,
+    settingsUiState: SettingsUiState,
+    onBackupSwitched: (Boolean) -> Unit,
+    onMobileDataSwitched: (Boolean) -> Unit,
+    onSaveClicked: (String, String) -> Unit,
+    //isChecking: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val settingsState = settingsViewModel.uiState.collectAsState()
-    var textIp by remember(settingsState.value.serverIp) { mutableStateOf(settingsState.value.serverIp) }
-    var textFolderName by remember(settingsState.value.serverFolderName) { mutableStateOf(settingsState.value.serverFolderName) }
-    val context = LocalContext.current
+    //val settingsState = settingsViewModel.userSettings.collectAsState()
+    var textIp by remember(settingsState.serverIp) { mutableStateOf(settingsState.serverIp) }
+    var textFolderName by remember(settingsState.serverFolderName) { mutableStateOf(settingsState.serverFolderName) }
+    //val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     ElevatedCard(
         modifier = modifier
@@ -107,15 +141,15 @@ fun SettingItemCard(
             .padding(32.dp),
         elevation = CardDefaults.cardElevation(16.dp)
     ) {
-        LaunchedEffect(Unit) {
-            settingsViewModel.toastMessage.collect { message ->
-                Toast.makeText(
-                    context,
-                    message.message,
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
+//        LaunchedEffect(Unit) {
+//            settingsViewModel.toastMessage.collect { message ->
+//                Toast.makeText(
+//                    context,
+//                    message.message,
+//                    Toast.LENGTH_LONG
+//                ).show()
+//            }
+//        }
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -139,22 +173,24 @@ fun SettingItemCard(
 //            ) {
                 OptionSwitch(
                     optionText = R.string.enable_local_server_backup,
-                    checked = settingsState.value.isBackupEnabled,
+                    checked = settingsState.isBackupEnabled,
                     onCheckedChange = {value ->
                         haptic.performHapticFeedback(
                             hapticFeedbackType = HapticFeedbackType.ToggleOn
                         )
-                        settingsViewModel.saveBackupEnabled(value)
+                        onBackupSwitched(value)
+                        //settingsViewModel.saveBackupEnabled(value)
                     }
                 )
                 OptionSwitch(
                     optionText = R.string.allow_upload_using_mobile_data,
-                    checked = settingsState.value.allowUploadMobileData,
+                    checked = settingsState.allowUploadMobileData,
                     onCheckedChange = {value ->
                         haptic.performHapticFeedback(
                             hapticFeedbackType = HapticFeedbackType.ToggleOn
                         )
-                        settingsViewModel.saveMobileDataUpload(value)
+                        //settingsViewModel.saveMobileDataUpload(value)
+                        onMobileDataSwitched(value)
                     }
                 )
 //                Text(
@@ -191,7 +227,28 @@ fun SettingItemCard(
                         text = stringResource(R.string.example_ip_msg)
                     )
                 },
-                enabled = settingsState.value.isBackupEnabled,
+                trailingIcon = {
+                    when(settingsUiState.serverConnectionStatus){
+                        ServerConnectionStatus.CHECKING ->{
+                            CircularProgressIndicator()
+                        }
+                        ServerConnectionStatus.CONNECTED -> {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_computer_24),
+                                contentDescription = "",
+                                tint = Color(0xff2eef68)
+                            )
+                        }
+                        ServerConnectionStatus.FAILED -> {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_mimo_disconnect_24),
+                                contentDescription = "",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
+                enabled = settingsState.isBackupEnabled,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -208,17 +265,18 @@ fun SettingItemCard(
                         text = stringResource(R.string.example_folder_msg)
                     )
                 },
-                enabled = settingsState.value.isBackupEnabled,
+                enabled = settingsState.isBackupEnabled,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Button(
                 onClick = {
-                    settingsViewModel.saveServerSettings(textIp, textFolderName)
+                    onSaveClicked(textIp, textFolderName)
+                    //settingsViewModel.saveServerSettings(textIp, textFolderName)
                 },
-                enabled = settingsState.value.isBackupEnabled && !settingsViewModel.isChecking.value
+                enabled = settingsState.isBackupEnabled && !settingsUiState.isChecking//!settingsViewModel.isChecking.value
             ) {
-                if (settingsViewModel.isChecking.value){
+                if (settingsUiState.isChecking){
                     Text(
                         text = stringResource(R.string.checking_btn)
                     )
@@ -268,13 +326,17 @@ fun OptionSwitch(
         )
     }
 }
-//@Preview
-//@Composable
-//private fun SettingsScreen(){
-//    SettingsScreen(
-//        settingsViewModel = viewModel<SettingsViewModel>(),
-//        onBackFabPressed = {},
-//        sharedTransitionScope = ,
-//        animatedVisibilityScope =
-//    )
-//}
+@Preview
+@Composable
+private fun SettingsScreenPreview(){
+    val settingsState = UserSettings("","", false, false)
+    val settingsUiState = SettingsUiState()
+    SettingItemCard(
+        settingsState = settingsState,
+        settingsUiState = settingsUiState,
+        onBackupSwitched = {},
+        onMobileDataSwitched = {},
+        onSaveClicked = {textIp, folderName ->},
+        //isChecking = false,
+        )
+}
