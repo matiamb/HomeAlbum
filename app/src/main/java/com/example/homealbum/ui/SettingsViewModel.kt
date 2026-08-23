@@ -80,7 +80,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             }
         }
     }
-    private fun checkServerConnection(){
+    fun checkServerConnection(){
         viewModelScope.launch {
             try {
                 _settingsUiState.update {
