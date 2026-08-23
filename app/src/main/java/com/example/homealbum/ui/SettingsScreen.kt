@@ -21,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -135,6 +136,7 @@ fun SettingItemCard(
     var textFolderName by remember(settingsState.serverFolderName) { mutableStateOf(settingsState.serverFolderName) }
     //val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val diskSpacePercentage = (settingsUiState.serverDiskSpace.usedSpaceBytes/settingsUiState.serverDiskSpace.totalSpaceBytes).toFloat()
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -269,6 +271,15 @@ fun SettingItemCard(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (settingsUiState.serverConnectionStatus == ServerConnectionStatus.CONNECTED){
+                Text(
+                    text = "${settingsUiState.serverDiskSpace.availableSpaceBytes} Gb left of ${settingsUiState.serverDiskSpace.totalSpaceBytes}"
+                )
+                LinearProgressIndicator(
+                    //TODO this crashes the app sometimes
+                    progress = { diskSpacePercentage }
+                )
+            }
             Button(
                 onClick = {
                     onSaveClicked(textIp, textFolderName)

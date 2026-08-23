@@ -35,4 +35,8 @@ interface ServerApiService{
         @Url savedUrl: String,
         @Query("fileHash") fileHash: String?
     ): Response<ResponseBody>
+    @GET
+    suspend fun checkDiskSpace(
+        @Url savedUrl: String
+    ): DiskSpaceResponse
 }

@@ -1,6 +1,5 @@
 package com.example.homealbum.ui
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -12,7 +11,6 @@ import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +39,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }
             checkServerConnection()
+            checkServerDiskSpace()
         }
     }
     fun saveServerSettings(ip: String, folderName: String){
@@ -111,6 +110,18 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     fun saveMobileDataUpload(allowUpload : Boolean){
         viewModelScope.launch {
             settingsRepository.saveMobileDataUpload(allowUpload = allowUpload)
+        }
+    }
+    fun checkServerDiskSpace(){
+        viewModelScope.launch {
+            try {
+                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.value.serverIp)
+                _settingsUiState.update {
+                    it.copy(serverDiskSpace = serverDiskSpace)
+                }
+            } catch (e: IOException){
+
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.homealbum.model.DiskSpace
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
 import retrofit2.Response
+import kotlin.math.round
 
 interface SettingsRepository {
     val userSettingsFlow: Flow<UserSettings>
@@ -20,6 +22,7 @@ interface SettingsRepository {
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
     suspend fun checkServerConnection(serverIp: String): Response<ResponseBody>
     suspend fun saveMobileDataUpload(allowUpload : Boolean)
+    suspend fun checkServerDiskSpace(serverIp: String): DiskSpace
 }
 
 class OfflineSettingsRepository(
@@ -65,5 +68,19 @@ class OfflineSettingsRepository(
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.ALLOW_UPLOAD_MOBILE_DATA] = allowUpload
         }
+    }
+
+    override suspend fun checkServerDiskSpace(serverIp: String): DiskSpace =
+        withContext(Dispatchers.IO){
+            val endpoint = "http://$serverIp/api/v1/media/diskspace"
+            val serverResponse = serverApiService.checkDiskSpace(endpoint)
+            val totalSpaceGb = round((serverResponse.totalSpaceBytes) /(1024*1024*1024).toDouble()*100)/100
+            val availableSpaceGb = round((serverResponse.availableSpaceBytes)/(1024*1024*1024).toDouble()*100)/100
+            val usedSpaceGb = round(((serverResponse.usedSpaceBytes)/(1024*1024*1024)).toDouble()*100)/100
+            DiskSpace(
+                totalSpaceBytes = totalSpaceGb,
+                availableSpaceBytes = availableSpaceGb,
+                usedSpaceBytes = usedSpaceGb
+            )
     }
 }
