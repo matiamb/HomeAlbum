@@ -1,8 +1,11 @@
 package com.example.homealbum.viewmodel
 
+import androidx.compose.runtime.collectAsState
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.ui.SettingsUiState
 import com.example.homealbum.ui.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -118,7 +121,7 @@ class SettingsViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun saveServerSettings_serverConnectionFailed_emitsExpectedToastAndSettingsAreNotSaved(){
+    fun saveServerSettings_serverConnectionFailed_emitsExpectedToastAndSettingsAreSaved(){
         runTest {
             val serverIpToSave = "100.0.0.1"
             val folderNameToSave = "Test Folder"
@@ -130,8 +133,35 @@ class SettingsViewModelTest {
             }
             advanceUntilIdle()
             val serverSettings = fakeSettingsRepository.userSettingsFlow.first()
-            assertEquals("", serverSettings.serverIp)
-            assertEquals("", serverSettings.serverFolderName)
+            assertEquals("100.0.0.1", serverSettings.serverIp)
+            assertEquals("Test Folder", serverSettings.serverFolderName)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionSuccessful_settingsUiStateConnected(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = true
+            fakeSettingsRepository.shouldThrowException = false
+            settingsViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertEquals(ServerConnectionStatus.CONNECTED, settingsUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionFailed_settingsUiStateFailed(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = false
+            fakeSettingsRepository.shouldThrowException = false
+            settingsViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertEquals(ServerConnectionStatus.FAILED, settingsUiState.serverConnectionStatus)
         }
     }
 }

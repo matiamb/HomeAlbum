@@ -30,12 +30,16 @@ import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.GalleryItem
+import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
@@ -53,9 +57,18 @@ class GalleryViewModel(
 
     private val _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
+    val userSettings = settingsRepository.userSettingsFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = UserSettings("", "", false, false)
+    )
 
     init {
         observeUpload()
+        viewModelScope.launch {
+            userSettings.first { it.serverIp.isNotBlank() }
+            checkServerConnection()
+        }
     }
     fun loadPhotos(){
         viewModelScope.launch {
@@ -182,6 +195,36 @@ class GalleryViewModel(
                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
        }
+    }
+    fun checkServerConnection(){
+        viewModelScope.launch {
+            try {
+                if (userSettings.value.isBackupEnabled){
+                    _galleryUiState.update { state ->
+                        state.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
+                    }
+                    val serverResponse = settingsRepository.checkServerConnection(userSettings.value.serverIp)
+                    if (serverResponse.isSuccessful){
+                        _galleryUiState.update { state ->
+                            state.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
+                        }
+                    } else {
+                        _galleryUiState.update { state ->
+                            state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                        }
+                    }
+                } else {
+                    _galleryUiState.update { state ->
+                        state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                    }
+                }
+            } catch (e: okio.IOException){
+                _galleryUiState.update { state ->
+                    state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                }
+            }
+
+        }
     }
     private fun observeUpload(){
         viewModelScope.launch {

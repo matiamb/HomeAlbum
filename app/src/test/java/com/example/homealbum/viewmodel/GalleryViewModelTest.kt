@@ -3,19 +3,16 @@ package com.example.homealbum.viewmodel
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
-import androidx.core.net.toUri
-import androidx.work.testing.TestListenableWorkerBuilder
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.model.MediaItem
+import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
 import com.example.homealbum.workers.DeleteScheduler
-import com.example.homealbum.workers.DeleteWorker
 import com.example.homealbum.workers.UploadScheduler
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -274,6 +271,32 @@ class GalleryViewModelTest {
             galleryViewModelTest.removeMediaFromServer(uri)
             advanceUntilIdle()
             assertEquals(uri, fakeDeleteScheduler.scheduledUri)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionSuccessful_settingsUiStateConnected(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = true
+            fakeSettingsRepository.shouldThrowException = false
+            galleryViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val galleryUiState = galleryViewModelTest.galleryUiState.value
+            assertEquals(ServerConnectionStatus.CONNECTED, galleryUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionFailed_settingsUiStateFailed(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = false
+            fakeSettingsRepository.shouldThrowException = false
+            galleryViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val galleryUiState = galleryViewModelTest.galleryUiState.value
+            assertEquals(ServerConnectionStatus.FAILED, galleryUiState.serverConnectionStatus)
         }
     }
 }
