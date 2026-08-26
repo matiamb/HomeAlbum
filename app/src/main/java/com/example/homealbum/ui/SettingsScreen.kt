@@ -367,10 +367,18 @@ fun ServerStorageItem(
             fontWeight = FontWeight.Bold
         )
         val diskSpacePercentage = (settingsUiState.serverDiskSpace.usedSpaceBytes/settingsUiState.serverDiskSpace.totalSpaceBytes).toFloat()
-        LinearProgressIndicator(
-            progress = { diskSpacePercentage },
-            modifier = Modifier.height(12.dp).fillMaxWidth()
-        )
+        if (diskSpacePercentage >= 0.9f){
+            LinearProgressIndicator(
+                progress = { diskSpacePercentage },
+                modifier = Modifier.height(12.dp).fillMaxWidth(),
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            LinearProgressIndicator(
+                progress = { diskSpacePercentage },
+                modifier = Modifier.height(12.dp).fillMaxWidth()
+            )
+        }
         Text(
             text = "${settingsUiState.serverDiskSpace.availableSpaceBytes}GB "+ "free of " + "${settingsUiState.serverDiskSpace.totalSpaceBytes}GB"
         )
@@ -382,7 +390,7 @@ private fun SettingsScreenPreview(){
     val settingsState = UserSettings("","", true, false)
     val settingsUiState = SettingsUiState(
         serverConnectionStatus = ServerConnectionStatus.CONNECTED,
-        serverDiskSpace = DiskSpace(1.0, availableSpaceBytes = 0.3, usedSpaceBytes = 0.4))
+        serverDiskSpace = DiskSpace(1.0, availableSpaceBytes = 0.1, usedSpaceBytes = 0.9))
     SettingItemCard(
         settingsState = settingsState,
         settingsUiState = settingsUiState,
