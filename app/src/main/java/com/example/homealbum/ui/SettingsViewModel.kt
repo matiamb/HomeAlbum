@@ -124,9 +124,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
                     it.copy(isChecking = false, serverDiskSpace = serverDiskSpace)
                 }
             } catch (e: IOException){
-                _settingsUiState.update {
-                    it.copy(isChecking = false)
-                }
+
             } finally {
                 _settingsUiState.update {
                     it.copy(isChecking = false)
