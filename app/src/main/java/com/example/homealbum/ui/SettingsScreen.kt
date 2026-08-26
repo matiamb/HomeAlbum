@@ -10,17 +10,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -42,11 +45,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.model.DiskSpace
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
 
@@ -228,23 +233,27 @@ fun SettingItemCard(
                     )
                 },
                 trailingIcon = {
-                    when(settingsUiState.serverConnectionStatus){
-                        ServerConnectionStatus.CHECKING ->{
-                            CircularProgressIndicator()
-                        }
-                        ServerConnectionStatus.CONNECTED -> {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_computer_24),
-                                contentDescription = "",
-                                tint = Color(0xff2eef68)
-                            )
-                        }
-                        ServerConnectionStatus.FAILED -> {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_mimo_disconnect_24),
-                                contentDescription = "",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                    if (!settingsState.isBackupEnabled){
+
+                    } else {
+                        when(settingsUiState.serverConnectionStatus){
+                            ServerConnectionStatus.CHECKING ->{
+                                CircularProgressIndicator()
+                            }
+                            ServerConnectionStatus.CONNECTED -> {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_computer_24),
+                                    contentDescription = "",
+                                    tint = Color(0xff2eef68)
+                                )
+                            }
+                            ServerConnectionStatus.FAILED -> {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_mimo_disconnect_24),
+                                    contentDescription = "",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 },
@@ -269,6 +278,24 @@ fun SettingItemCard(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+            when{
+                !settingsState.isBackupEnabled -> {
+
+                }
+                settingsUiState.isChecking -> {
+                    CircularProgressIndicator()
+                }
+                settingsUiState.serverConnectionStatus == ServerConnectionStatus.CONNECTED && !settingsUiState.isChecking -> {
+                    ServerStorageItem(settingsUiState)
+                }
+                else -> {
+                    Icon(
+                        imageVector = Icons.Filled.Warning,
+                        contentDescription = ""
+                    )
+                }
+            }
+
             Button(
                 onClick = {
                     onSaveClicked(textIp, textFolderName)
@@ -326,11 +353,44 @@ fun OptionSwitch(
         )
     }
 }
+@Composable
+fun ServerStorageItem(
+    settingsUiState: SettingsUiState,
+    modifier: Modifier = Modifier
+    ){
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Storage",
+            fontWeight = FontWeight.Bold
+        )
+        val diskSpacePercentage = (settingsUiState.serverDiskSpace.usedSpaceBytes/settingsUiState.serverDiskSpace.totalSpaceBytes).toFloat()
+        if (diskSpacePercentage >= 0.9f){
+            LinearProgressIndicator(
+                progress = { diskSpacePercentage },
+                modifier = Modifier.height(12.dp).fillMaxWidth(),
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            LinearProgressIndicator(
+                progress = { diskSpacePercentage },
+                modifier = Modifier.height(12.dp).fillMaxWidth()
+            )
+        }
+        Text(
+            text = "${settingsUiState.serverDiskSpace.availableSpaceBytes}GB "+ "free of " + "${settingsUiState.serverDiskSpace.totalSpaceBytes}GB"
+        )
+    }
+}
 @Preview
 @Composable
 private fun SettingsScreenPreview(){
-    val settingsState = UserSettings("","", false, false)
-    val settingsUiState = SettingsUiState()
+    val settingsState = UserSettings("","", true, false)
+    val settingsUiState = SettingsUiState(
+        serverConnectionStatus = ServerConnectionStatus.CONNECTED,
+        serverDiskSpace = DiskSpace(1.0, availableSpaceBytes = 0.1, usedSpaceBytes = 0.9))
     SettingItemCard(
         settingsState = settingsState,
         settingsUiState = settingsUiState,

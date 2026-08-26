@@ -1,6 +1,5 @@
 package com.example.homealbum.ui
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -41,6 +40,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }
             checkServerConnection()
+            checkServerDiskSpace()
         }
     }
     fun saveServerSettings(ip: String, folderName: String){
@@ -111,6 +111,27 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     fun saveMobileDataUpload(allowUpload : Boolean){
         viewModelScope.launch {
             settingsRepository.saveMobileDataUpload(allowUpload = allowUpload)
+        }
+    }
+    fun checkServerDiskSpace(){
+        viewModelScope.launch {
+            try {
+                _settingsUiState.update {
+                    it.copy(isChecking = true)
+                }
+                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.value.serverIp)
+                _settingsUiState.update {
+                    it.copy(isChecking = false, serverDiskSpace = serverDiskSpace)
+                }
+            } catch (e: IOException){
+                _settingsUiState.update {
+                    it.copy(isChecking = false)
+                }
+            } finally {
+                _settingsUiState.update {
+                    it.copy(isChecking = false)
+                }
+            }
         }
     }
 

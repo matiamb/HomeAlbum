@@ -9,6 +9,7 @@ import com.example.homealbum.workers.UploadScheduler
 import com.example.homealbum.workers.WorkManagerDeleteScheduler
 import com.example.homealbum.workers.WorkManagerUploadScheduler
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 interface AppContainer {
     val offlinePhotoRepository: PhotoRepository
@@ -23,6 +24,7 @@ class DefaultAppContainer(context: Context) : AppContainer{
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("http://localhost")
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
     private val retrofitService: ServerApiService by lazy {
