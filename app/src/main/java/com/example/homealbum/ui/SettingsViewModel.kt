@@ -11,6 +11,7 @@ import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -115,12 +116,21 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     fun checkServerDiskSpace(){
         viewModelScope.launch {
             try {
+                _settingsUiState.update {
+                    it.copy(isChecking = true)
+                }
                 val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.value.serverIp)
                 _settingsUiState.update {
-                    it.copy(serverDiskSpace = serverDiskSpace)
+                    it.copy(isChecking = false, serverDiskSpace = serverDiskSpace)
                 }
             } catch (e: IOException){
-
+                _settingsUiState.update {
+                    it.copy(isChecking = false)
+                }
+            } finally {
+                _settingsUiState.update {
+                    it.copy(isChecking = false)
+                }
             }
         }
     }
