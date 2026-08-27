@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
-import com.example.homealbum.data.OfflinePhotoRepository
 import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,15 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
-import androidx.work.Constraints
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
-import com.example.homealbum.data.NetworkPhotoRepository
-import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.GalleryItem
@@ -34,7 +26,6 @@ import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
-import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
@@ -79,9 +70,12 @@ class GalleryViewModel(
                     photoList = photoList,
                     galleryItems = groupPhotosByDate(photoList)
                     ) }
-            } catch (e: Exception){
+            } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
-            } finally {
+            } catch (e: SecurityException){
+                _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
+            }
+            finally {
                 _galleryUiState.update { it.copy(isRefreshing = false) }
             }
 
@@ -107,29 +101,6 @@ class GalleryViewModel(
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
             val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
-//            try {
-//                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-//                if (isFileInServer.isSuccessful){
-//                    networkPhotoRepository.deleteMediaFile(uri)
-//                    if (intentSenderRequest != null) {
-//                        onIntentReady(intentSenderRequest)
-//                    } else {
-//                        removeThrashedPhotoFromUi(uri)
-//                    }
-//                } else {
-//                    if (intentSenderRequest != null) {
-//                        onIntentReady(intentSenderRequest)
-//                    } else {
-//                        removeThrashedPhotoFromUi(uri)
-//                    }
-//                }
-//            } catch (e: Exception){
-//                if (intentSenderRequest != null) {
-//                    onIntentReady(intentSenderRequest)
-//                } else {
-//                    removeThrashedPhotoFromUi(uri)
-//                }
-//            }
             if (intentSenderRequest != null) {
                 onIntentReady(intentSenderRequest)
             } else {
@@ -145,7 +116,6 @@ class GalleryViewModel(
                     deleteScheduler.scheduleDelete(uri)
                 }
             } catch (e: IOException){
-                //_toastMessage.emit(ToastText(message = R.string.connection_error_msg))
                 deleteScheduler.scheduleDelete(uri)
             }
         }
@@ -160,17 +130,6 @@ class GalleryViewModel(
     ){
         viewModelScope.launch {
             val userSettings = settingsRepository.userSettingsFlow.first()
-//            when {
-//                userSettings.isBackupEnabled && !userSettings.allowUploadMobileData-> {
-//                    uploadScheduler.scheduleUpload(uri, userSettings.)
-//                }
-//                userSettings.isBackupEnabled && userSettings.allowUploadMobileData -> {
-//                    uploadScheduler.scheduleUploadWithMobileData(uri)
-//                }
-//                else -> {
-//                    _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
-//                }
-//            }
             if (userSettings.isBackupEnabled){
                 uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
             } else {
@@ -188,7 +147,7 @@ class GalleryViewModel(
                    } else {
                        _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
                    }
-               } catch (e: Exception){
+               } catch (e: IOException){
                    _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
                }
            } else {
@@ -218,7 +177,7 @@ class GalleryViewModel(
                         state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
                     }
                 }
-            } catch (e: okio.IOException){
+            } catch (e: IOException){
                 _galleryUiState.update { state ->
                     state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
                 }

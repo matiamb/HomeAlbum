@@ -212,23 +212,6 @@ private fun GalleryGrid(
                         }
                     }
                 }
-//                itemsIndexed(
-//                    items = galleryUiState.value.photoList,
-//                    key = {_, uri -> uri.toString()}
-//                ){ index, item ->
-//                    ImageThumbnail(
-//                        mediaItem = item,
-//                        galleryViewModel = galleryViewModel,
-//                        index = index,
-//                        onImageClicked = onImageClicked,
-//                        modifier = Modifier.sharedElement(
-//                            sharedContentState = rememberSharedContentState(
-//                                key = "media-$index"
-//                            ),
-//                            animatedVisibilityScope = animatedVisibilityScope
-//                        )
-//                    )
-//                }
             }
         }
     }

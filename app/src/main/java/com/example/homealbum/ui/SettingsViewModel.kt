@@ -32,8 +32,6 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     )
     private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
-//    private var _isChecking = mutableStateOf(false)
-//    val isChecking = _isChecking
     private var _settingsUiState = MutableStateFlow(SettingsUiState())
     val settingsUiState = _settingsUiState.asStateFlow()
     init {
@@ -44,7 +42,6 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
         }
     }
     fun saveServerSettings(ip: String, folderName: String){
-//        _isChecking.value = true
         viewModelScope.launch {
             settingsRepository.saveServerSettings(ip, folderName)
             try {
@@ -59,8 +56,6 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
                             isChecking = false)
                     }
                     _toastMessage.emit(ToastText(message = R.string.server_connection_ok))
-                    //settingsRepository.saveServerSettings(ip, folderName)
-                    //_isChecking.value = false
                 } else {
                     _settingsUiState.update {
                         it.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)

@@ -1,9 +1,7 @@
 package com.example.homealbum.ui
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,9 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.homealbum.R
-import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.DiskSpace
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
@@ -116,7 +112,6 @@ fun SettingsScreen(
                     onSaveClicked = { textIp, textFolderName ->
                         settingsViewModel.saveServerSettings(textIp, textFolderName)
                     },
-                    //isChecking = settingsViewModel.isChecking.value,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -132,13 +127,10 @@ fun SettingItemCard(
     onBackupSwitched: (Boolean) -> Unit,
     onMobileDataSwitched: (Boolean) -> Unit,
     onSaveClicked: (String, String) -> Unit,
-    //isChecking: Boolean,
     modifier: Modifier = Modifier
 ) {
-    //val settingsState = settingsViewModel.userSettings.collectAsState()
     var textIp by remember(settingsState.serverIp) { mutableStateOf(settingsState.serverIp) }
     var textFolderName by remember(settingsState.serverFolderName) { mutableStateOf(settingsState.serverFolderName) }
-    //val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     ElevatedCard(
         modifier = modifier
@@ -146,15 +138,6 @@ fun SettingItemCard(
             .padding(32.dp),
         elevation = CardDefaults.cardElevation(16.dp)
     ) {
-//        LaunchedEffect(Unit) {
-//            settingsViewModel.toastMessage.collect { message ->
-//                Toast.makeText(
-//                    context,
-//                    message.message,
-//                    Toast.LENGTH_LONG
-//                ).show()
-//            }
-//        }
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -168,25 +151,18 @@ fun SettingItemCard(
             )
             Text(
                 text = stringResource(R.string.settings),
-                //modifier = Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.displayLarge
             )
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                verticalAlignment = Alignment.CenterVertically,
-//                horizontalArrangement = Arrangement.SpaceAround
-//            ) {
-                OptionSwitch(
-                    optionText = R.string.enable_local_server_backup,
-                    checked = settingsState.isBackupEnabled,
-                    onCheckedChange = {value ->
-                        haptic.performHapticFeedback(
-                            hapticFeedbackType = HapticFeedbackType.ToggleOn
-                        )
-                        onBackupSwitched(value)
-                        //settingsViewModel.saveBackupEnabled(value)
-                    }
-                )
+            OptionSwitch(
+                optionText = R.string.enable_local_server_backup,
+                checked = settingsState.isBackupEnabled,
+                onCheckedChange = {value ->
+                    haptic.performHapticFeedback(
+                        hapticFeedbackType = HapticFeedbackType.ToggleOn
+                    )
+                    onBackupSwitched(value)
+                }
+            )
                 OptionSwitch(
                     optionText = R.string.allow_upload_using_mobile_data,
                     checked = settingsState.allowUploadMobileData,
@@ -194,31 +170,9 @@ fun SettingItemCard(
                         haptic.performHapticFeedback(
                             hapticFeedbackType = HapticFeedbackType.ToggleOn
                         )
-                        //settingsViewModel.saveMobileDataUpload(value)
                         onMobileDataSwitched(value)
                     }
                 )
-//                Text(
-//                    text = stringResource(R.string.enable_local_server_backup)
-//                )
-//                Switch(
-//                    checked = settingsState.value.isBackupEnabled,
-//                    onCheckedChange = {
-//                        haptic.performHapticFeedback(
-//                            hapticFeedbackType = HapticFeedbackType.ToggleOn
-//                        )
-//                        settingsViewModel.saveBackupEnabled(it)
-//                                      },
-//                    thumbContent = {
-//                        if (settingsState.value.isBackupEnabled){
-//                            Icon(
-//                                Icons.Filled.Check,
-//                                contentDescription = ""
-//                            )
-//                        }
-//                    }
-//                )
-            //}
             TextField(
                 value = textIp,
                 onValueChange = { newText -> textIp = newText},
@@ -299,9 +253,8 @@ fun SettingItemCard(
             Button(
                 onClick = {
                     onSaveClicked(textIp, textFolderName)
-                    //settingsViewModel.saveServerSettings(textIp, textFolderName)
                 },
-                enabled = settingsState.isBackupEnabled && !settingsUiState.isChecking//!settingsViewModel.isChecking.value
+                enabled = settingsState.isBackupEnabled && !settingsUiState.isChecking
             ) {
                 if (settingsUiState.isChecking){
                     Text(
@@ -335,13 +288,6 @@ fun OptionSwitch(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-//                {
-//                haptic.performHapticFeedback(
-//                    hapticFeedbackType = HapticFeedbackType.ToggleOn
-//                )
-//                onSwitchChange()
-//                //settingsViewModel.saveBackupEnabled(it)
-//            },
             thumbContent = {
                 if (checked) {
                     Icon(
@@ -370,17 +316,21 @@ fun ServerStorageItem(
         if (diskSpacePercentage >= 0.9f){
             LinearProgressIndicator(
                 progress = { diskSpacePercentage },
-                modifier = Modifier.height(12.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .height(12.dp)
+                    .fillMaxWidth(),
                 color = MaterialTheme.colorScheme.error
             )
         } else {
             LinearProgressIndicator(
                 progress = { diskSpacePercentage },
-                modifier = Modifier.height(12.dp).fillMaxWidth()
+                modifier = Modifier
+                    .height(12.dp)
+                    .fillMaxWidth()
             )
         }
         Text(
-            text = "${settingsUiState.serverDiskSpace.availableSpaceBytes}GB "+ "free of " + "${settingsUiState.serverDiskSpace.totalSpaceBytes}GB"
+            text = "${settingsUiState.serverDiskSpace.availableSpaceBytes}GB "+ stringResource(R.string.storage_text_free_of) + "${settingsUiState.serverDiskSpace.totalSpaceBytes}GB"
         )
     }
 }
@@ -396,7 +346,6 @@ private fun SettingsScreenPreview(){
         settingsUiState = settingsUiState,
         onBackupSwitched = {},
         onMobileDataSwitched = {},
-        onSaveClicked = {textIp, folderName ->},
-        //isChecking = false,
+        onSaveClicked = {textIp, folderName ->}
         )
 }

@@ -57,7 +57,6 @@ class WorkManagerUploadScheduler(
                 workDataOf(UploadWorker.KEY_URI to uri.toString())
             )
             .build()
-        //workManager.enqueue(request)
         workManager.enqueueUniqueWork(
             uniqueWorkName = "upload_$uri",
             existingWorkPolicy = ExistingWorkPolicy.REPLACE,
