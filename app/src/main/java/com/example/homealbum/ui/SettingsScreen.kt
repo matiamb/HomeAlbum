@@ -240,7 +240,14 @@ fun SettingItemCard(
                     CircularProgressIndicator()
                 }
                 settingsUiState.serverConnectionStatus == ServerConnectionStatus.CONNECTED && !settingsUiState.isChecking -> {
-                    ServerStorageItem(settingsUiState)
+                    if (settingsUiState.serverDiskSpace.totalSpaceBytes == 0.0){
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = ""
+                        )
+                    } else {
+                        ServerStorageItem(settingsUiState)
+                    }
                 }
                 else -> {
                     Icon(
