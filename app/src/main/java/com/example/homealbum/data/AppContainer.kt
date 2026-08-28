@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
+import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
+import com.example.homealbum.workers.WorkManagerDeleteScheduler
 import com.example.homealbum.workers.WorkManagerUploadScheduler
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 interface AppContainer {
     val offlinePhotoRepository: PhotoRepository
@@ -14,12 +17,14 @@ interface AppContainer {
     val networkPhotoRepository: ImageScreenRepository
     val workManager: WorkManager
     val uploadScheduler: UploadScheduler
+    val deleteScheduler: DeleteScheduler
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("http://localhost")
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
     private val retrofitService: ServerApiService by lazy {
@@ -47,5 +52,8 @@ class DefaultAppContainer(context: Context) : AppContainer{
     }
     override val uploadScheduler: UploadScheduler by lazy {
         WorkManagerUploadScheduler(workManager = workManager)
+    }
+    override val deleteScheduler: DeleteScheduler by lazy {
+        WorkManagerDeleteScheduler(workManager = workManager)
     }
 }

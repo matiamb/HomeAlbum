@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
-import com.example.homealbum.data.OfflinePhotoRepository
 import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,28 +17,30 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
-import androidx.work.Constraints
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
-import com.example.homealbum.data.NetworkPhotoRepository
-import com.example.homealbum.data.OfflineSettingsRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.model.GalleryItem
+import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UserSettings
+import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
-import com.example.homealbum.workers.UploadWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import java.io.IOException
+import java.time.Instant
+import java.time.ZoneId
 
 class GalleryViewModel(
     private val photosRepo: PhotoRepository,
     private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
-    private val uploadScheduler: UploadScheduler
+    private val uploadScheduler: UploadScheduler,
+    private val deleteScheduler: DeleteScheduler
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -47,15 +48,34 @@ class GalleryViewModel(
 
     private val _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
+    val userSettings = settingsRepository.userSettingsFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = UserSettings("", "", false, false)
+    )
 
+    init {
+        observeUpload()
+        viewModelScope.launch {
+            userSettings.first { it.serverIp.isNotBlank() }
+            checkServerConnection()
+        }
+    }
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
             try {
-                _galleryUiState.update { it.copy(photoList = photosRepo.getLocalPhotos()) }
-            } catch (e: Exception){
+                val photoList = photosRepo.getLocalPhotos()
+                _galleryUiState.update { it.copy(
+                    photoList = photoList,
+                    galleryItems = groupPhotosByDate(photoList)
+                    ) }
+            } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
-            } finally {
+            } catch (e: SecurityException){
+                _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
+            }
+            finally {
                 _galleryUiState.update { it.copy(isRefreshing = false) }
             }
 
@@ -81,32 +101,25 @@ class GalleryViewModel(
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
             val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
-            try {
-                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-                if (isFileInServer.isSuccessful){
-                    networkPhotoRepository.deleteMediaFile(uri)
-                    if (intentSenderRequest != null) {
-                        onIntentReady(intentSenderRequest)
-                    } else {
-                        removeThrashedPhotoFromUi(uri)
-                    }
-                } else {
-                    if (intentSenderRequest != null) {
-                        onIntentReady(intentSenderRequest)
-                    } else {
-                        removeThrashedPhotoFromUi(uri)
-                    }
-                }
-            } catch (e: Exception){
-                if (intentSenderRequest != null) {
-                    onIntentReady(intentSenderRequest)
-                } else {
-                    removeThrashedPhotoFromUi(uri)
-                }
+            if (intentSenderRequest != null) {
+                onIntentReady(intentSenderRequest)
+            } else {
+                removeThrashedPhotoFromUi(uri)
             }
         }
     }
-
+    fun removeMediaFromServer(uri: Uri){
+        viewModelScope.launch {
+            try {
+                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
+                if (isFileInServer.isSuccessful){
+                    deleteScheduler.scheduleDelete(uri)
+                }
+            } catch (e: IOException){
+                deleteScheduler.scheduleDelete(uri)
+            }
+        }
+    }
     fun removeThrashedPhotoFromUi(uri: Uri){
         _galleryUiState.update { state ->
             state.copy(photoList = state.photoList.filter { it.uri != uri })
@@ -116,8 +129,9 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-                uploadScheduler.scheduleUpload(uri)
+            val userSettings = settingsRepository.userSettingsFlow.first()
+            if (userSettings.isBackupEnabled){
+                uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
@@ -133,13 +147,52 @@ class GalleryViewModel(
                    } else {
                        _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
                    }
-               } catch (e: Exception){
+               } catch (e: IOException){
                    _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
                }
            } else {
                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
        }
+    }
+    fun checkServerConnection(){
+        viewModelScope.launch {
+            try {
+                if (userSettings.value.isBackupEnabled){
+                    _galleryUiState.update { state ->
+                        state.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
+                    }
+                    val serverResponse = settingsRepository.checkServerConnection(userSettings.value.serverIp)
+                    if (serverResponse.isSuccessful){
+                        _galleryUiState.update { state ->
+                            state.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
+                        }
+                    } else {
+                        _galleryUiState.update { state ->
+                            state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                        }
+                    }
+                } else {
+                    _galleryUiState.update { state ->
+                        state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                    }
+                }
+            } catch (e: IOException){
+                _galleryUiState.update { state ->
+                    state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
+                }
+            }
+
+        }
+    }
+    private fun observeUpload(){
+        viewModelScope.launch {
+            uploadScheduler.uploadStatus.collect { status ->
+                _galleryUiState.update { state ->
+                    state.copy(uploadStatus = status)
+                }
+            }
+        }
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -152,11 +205,34 @@ class GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
                     settingsRepository,
-                    application.container.uploadScheduler
+                    application.container.uploadScheduler,
+                    application.container.deleteScheduler
                     )
             }
         }
     }
+}
+private fun groupPhotosByDate(photos: List<MediaItem>): List<GalleryItem>{
+    return photos.withIndex()
+        .groupBy { itemIndexed ->
+            Instant.ofEpochMilli(itemIndexed.value.dateTaken)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+        }.flatMap { (date, photosForDate) ->
+            buildList {
+                add(
+                    GalleryItem.DateHeader(date)
+                )
+                addAll(
+                    photosForDate.map { itemIndexed ->
+                        GalleryItem.Photo(
+                            mediaItem = itemIndexed.value,
+                            originalIndex = itemIndexed.index
+                        )
+                    }
+                )
+            }
+        }
 }
 data class ToastText(
     @StringRes val message: Int = 0

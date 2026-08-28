@@ -1,8 +1,12 @@
 package com.example.homealbum.viewmodel
 
+import androidx.compose.runtime.collectAsState
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.model.DiskSpace
+import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.ui.SettingsUiState
 import com.example.homealbum.ui.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,6 +24,7 @@ import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -47,8 +52,9 @@ class FakeSettingsRepository : SettingsRepository{
     var shouldThrowException = false
 
     private var _userSettingsFlow = MutableStateFlow(
-        UserSettings("", "", true)
+        UserSettings("", "", true, false)
     )
+    var diskSpaceItem = DiskSpace(totalSpaceBytes = 100.0, availableSpaceBytes = 30.0, usedSpaceBytes = 70.0)
 
     override val userSettingsFlow: Flow<UserSettings> =
         _userSettingsFlow
@@ -76,6 +82,19 @@ class FakeSettingsRepository : SettingsRepository{
             Response.error(504, "Server error".toResponseBody())
         }
     }
+
+    override suspend fun saveMobileDataUpload(allowUpload: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun checkServerDiskSpace(serverIp: String): DiskSpace {
+        if(shouldThrowException){
+            throw IOException()
+        } else {
+            return diskSpaceItem
+        }
+    }
+
     fun setConnectionResult(result: Boolean){
         connectionSuccessful = result
     }
@@ -113,7 +132,7 @@ class SettingsViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun saveServerSettings_serverConnectionFailed_emitsExpectedToastAndSettingsAreNotSaved(){
+    fun saveServerSettings_serverConnectionFailed_emitsExpectedToastAndSettingsAreSaved(){
         runTest {
             val serverIpToSave = "100.0.0.1"
             val folderNameToSave = "Test Folder"
@@ -125,8 +144,60 @@ class SettingsViewModelTest {
             }
             advanceUntilIdle()
             val serverSettings = fakeSettingsRepository.userSettingsFlow.first()
-            assertEquals("", serverSettings.serverIp)
-            assertEquals("", serverSettings.serverFolderName)
+            assertEquals("100.0.0.1", serverSettings.serverIp)
+            assertEquals("Test Folder", serverSettings.serverFolderName)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionSuccessful_settingsUiStateConnected(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = true
+            fakeSettingsRepository.shouldThrowException = false
+            settingsViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertEquals(ServerConnectionStatus.CONNECTED, settingsUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionFailed_settingsUiStateFailed(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = false
+            fakeSettingsRepository.shouldThrowException = false
+            settingsViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertEquals(ServerConnectionStatus.FAILED, settingsUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerDiskSpace_requestSuccessful_uiStateUpdated(){
+        runTest {
+            fakeSettingsRepository.shouldThrowException = false
+            settingsViewModelTest.checkServerDiskSpace()
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertFalse(settingsUiState.isChecking)
+            assertEquals(fakeSettingsRepository.diskSpaceItem, settingsUiState.serverDiskSpace)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerDiskSpace_requestFailed_isCheckingFalse(){
+        runTest {
+            fakeSettingsRepository.shouldThrowException = true
+            settingsViewModelTest.checkServerDiskSpace()
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertFalse(settingsUiState.isChecking)
+            assertEquals(DiskSpace(0.0, 0.0, 0.0), settingsUiState.serverDiskSpace)
         }
     }
 }

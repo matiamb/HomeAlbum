@@ -3,22 +3,26 @@ package com.example.homealbum.viewmodel
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
-import androidx.core.net.toUri
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.model.MediaItem
+import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
+import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -28,9 +32,9 @@ import retrofit2.Response
 
 class FakePhotoRepository() : PhotoRepository{
     var failToLoad = false
-    val media1 = MediaItem( uri = mockk<Uri>(), false)
-    val media2 = MediaItem(uri = mockk<Uri>(), isVideo = false)
-    val media3 = MediaItem(uri = mockk<Uri>(), isVideo = false)
+    val media1 = MediaItem( uri = mockk<Uri>(), false, dateTaken = 1L)
+    val media2 = MediaItem(uri = mockk<Uri>(), isVideo = false, dateTaken = 2L)
+    val media3 = MediaItem(uri = mockk<Uri>(), isVideo = false, dateTaken = 3L)
     override suspend fun getLocalPhotos(): List<MediaItem> {
         if (failToLoad){
             throw SecurityException()
@@ -58,12 +62,24 @@ class FakePhotoRepository() : PhotoRepository{
 }
 class FakeNetworkRepository() : ImageScreenRepository{
     var photoExists = false
+    var throwException = false
     override suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody> {
-        if (photoExists){
-            return Response.success("OK".toResponseBody())
-        } else {
-            return Response.error<ResponseBody>(404, "Not found".toResponseBody())
+        when {
+            photoExists && !throwException -> {
+                return Response.success("OK".toResponseBody())
+            }
+            !photoExists && !throwException -> {
+                return Response.error<ResponseBody>(404, "Not found".toResponseBody())
+            }
+            else -> {
+                throw IOException()
+            }
         }
+//        if (photoExists && !throwException){
+//            return Response.success("OK".toResponseBody())
+//        } else {
+//            return Response.error<ResponseBody>(404, "Not found".toResponseBody())
+//        }
     }
 
     override suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody> {
@@ -77,10 +93,20 @@ class FakeNetworkRepository() : ImageScreenRepository{
 }
 class FakeUploadScheduler() : UploadScheduler {
     var scheduledUri: Uri? = null
-    override fun scheduleUpload(uri: Uri) {
+    var fakeAllowUploadMobilData = false
+    override fun scheduleUpload(uri: Uri, allowUploadMobileData: Boolean) {
         scheduledUri = uri
     }
 
+    override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.IDLE)
+
+}
+
+class FakeDeleteScheduler : DeleteScheduler{
+    var scheduledUri: Uri? = null
+    override fun scheduleDelete(uri: Uri) {
+        scheduledUri = uri
+    }
 }
 
 class GalleryViewModelTest {
@@ -91,17 +117,20 @@ class GalleryViewModelTest {
     private lateinit var fakeSettingsRepository: FakeSettingsRepository
     private lateinit var galleryViewModelTest: GalleryViewModel
     private lateinit var fakeUploadScheduler: FakeUploadScheduler
+    private lateinit var fakeDeleteScheduler: FakeDeleteScheduler
     @Before
     fun setup(){
         fakePhotoRepository = FakePhotoRepository()
         fakeNetworkRepository = FakeNetworkRepository()
         fakeSettingsRepository = FakeSettingsRepository()
         fakeUploadScheduler = FakeUploadScheduler()
+        fakeDeleteScheduler = FakeDeleteScheduler()
         galleryViewModelTest = GalleryViewModel(
             photosRepo = fakePhotoRepository,
             networkPhotoRepository = fakeNetworkRepository,
             settingsRepository = fakeSettingsRepository,
-            uploadScheduler = fakeUploadScheduler
+            uploadScheduler = fakeUploadScheduler,
+            deleteScheduler = fakeDeleteScheduler
         )
     }
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -209,6 +238,65 @@ class GalleryViewModelTest {
             }
             advanceUntilIdle()
             assertFalse(uri == fakeUploadScheduler.scheduledUri)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeMediaFromServer_mediaFileInServer_deleteSchedulerCalled(){
+        runTest {
+            val uri = mockk<Uri>()
+            fakeNetworkRepository.photoExists = true
+            galleryViewModelTest.removeMediaFromServer(uri)
+            advanceUntilIdle()
+            assertEquals(uri, fakeDeleteScheduler.scheduledUri)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeMediaFromServer_mediaFileNotInServer_deleteSchedulerNotCalled(){
+        runTest {
+            val uri = mockk<Uri>()
+            fakeNetworkRepository.photoExists = false
+            galleryViewModelTest.removeMediaFromServer(uri)
+            advanceUntilIdle()
+            assertFalse(uri == fakeDeleteScheduler.scheduledUri)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeMediaFromServer_serverNotReachable_deleteSchedulerCalled(){
+        runTest {
+            val uri = mockk<Uri>()
+            fakeNetworkRepository.throwException = true
+            galleryViewModelTest.removeMediaFromServer(uri)
+            advanceUntilIdle()
+            assertEquals(uri, fakeDeleteScheduler.scheduledUri)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionSuccessful_settingsUiStateConnected(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = true
+            fakeSettingsRepository.shouldThrowException = false
+            galleryViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val galleryUiState = galleryViewModelTest.galleryUiState.value
+            assertEquals(ServerConnectionStatus.CONNECTED, galleryUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun checkServerConnection_serverConnectionFailed_settingsUiStateFailed(){
+        runTest {
+            fakeSettingsRepository.connectionSuccessful = false
+            fakeSettingsRepository.shouldThrowException = false
+            galleryViewModelTest.checkServerConnection()
+            //assertEquals(ServerConnectionStatus.CHECKING, settingsUiState.serverConnectionStatus)
+            advanceUntilIdle()
+            val galleryUiState = galleryViewModelTest.galleryUiState.value
+            assertEquals(ServerConnectionStatus.FAILED, galleryUiState.serverConnectionStatus)
         }
     }
 }

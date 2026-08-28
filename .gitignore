@@ -14,6 +14,7 @@
 .cxx
 local.properties
 *.apk
+*.md
 *.dm
 output-metadata.json
 *.jks

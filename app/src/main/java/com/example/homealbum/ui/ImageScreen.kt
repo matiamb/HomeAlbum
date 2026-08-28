@@ -17,6 +17,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -64,6 +67,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.R
+import com.example.homealbum.model.UploadStatus
 
 @Composable
 fun ImageScreen(
@@ -91,9 +95,11 @@ fun ImageScreen(
             val photoCount = uiState.value.photoList.size
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+                galleryViewModel.removeMediaFromServer(currentUri)
                 onLastPhotoDeleted()
             } else {
                 galleryViewModel.removeThrashedPhotoFromUi(currentUri)
+                galleryViewModel.removeMediaFromServer(currentUri)
             }
         }
     }
@@ -104,6 +110,7 @@ fun ImageScreen(
     }
     Scaffold(
         bottomBar = { BottomToolbar(
+            uiState = uiState.value,
             onDeleteClicked = {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R){
                     openAlertDialog.value = true
@@ -184,12 +191,46 @@ fun ImageRoll(
                 }
         ) { page ->
             val mediaItem = uiState.value.photoList[page]
-            val isCurrentPage = pagerState.currentPage == page
+            val isCurrentPage = pagerState.settledPage == page
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
             val context = LocalContext.current
             val imageKey = "media-$page-${mediaItem.uri}"
             val fullImageKey = "media-${mediaItem}"
+            val asyncImageModifier = if (isCurrentPage){
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = animatedOffset.x,
+                        translationY = animatedOffset.y
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2f
+                                    val targetOffsetX = (size.width / 2 - it.x) * scale
+                                    val targetOffsetY = (size.height / 2 - it.y) * scale
+                                    offset = Offset(targetOffsetX, targetOffsetY)
+                                }
+                            }
+                        )
+                    }
+                    .sharedElement(
+                        sharedContentState = rememberSharedContentState
+                            (
+                            key = "media-$page"
+                        ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+            } else {
+                Modifier
+            }
             LaunchedEffect(scale) {
                 isZoomed = scale > 1f
             }
@@ -212,36 +253,7 @@ fun ImageRoll(
                         .memoryCacheKey(fullImageKey)
                         .build(),
                     contentDescription = "",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = animatedScale,
-                            scaleY = animatedScale,
-                            translationX = animatedOffset.x,
-                            translationY = animatedOffset.y
-                        )
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    if (scale > 1f) {
-                                        scale = 1f
-                                        offset = Offset.Zero
-                                    } else {
-                                        scale = 2f
-                                        val targetOffsetX = (size.width / 2 - it.x) * scale
-                                        val targetOffsetY = (size.height / 2 - it.y) * scale
-                                        offset = Offset(targetOffsetX, targetOffsetY)
-                                    }
-                                }
-                            )
-                        }
-                        .sharedElement(
-                            sharedContentState = rememberSharedContentState
-                                (
-                                key = "media-$page"
-                            ),
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
+                    modifier = asyncImageModifier
                     ,contentScale = ContentScale.Fit
                 )
             }
@@ -252,6 +264,7 @@ fun ImageRoll(
 
 @Composable
 fun BottomToolbar(
+    uiState: GalleryUiState,
     onDeleteClicked: () -> Unit,
     onSharedClicked: () -> Unit,
     onBackFabClicked: () -> Unit,
@@ -284,6 +297,23 @@ fun BottomToolbar(
                     painterResource(R.drawable.outline_cloud_alert_24),
                     stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
                 )
+            }
+            IconButton(onClick = {}, enabled = false) {
+                when (uiState.uploadStatus) {
+                    UploadStatus.UPLOADING -> {
+                        CircularProgressIndicator(modifier = Modifier.width(32.dp))
+                    }
+                    UploadStatus.SCHEDULED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_schedule_24),
+                            contentDescription = ""//stringResource(R.string.delete_file_icon_desc)
+                        )
+                    }
+                    UploadStatus.IDLE -> {
+
+                    }
+                }
+
             }
         },
         floatingActionButton = {
@@ -418,7 +448,11 @@ private fun sharePhoto(context: Context, uri: Uri){
 @Preview
 @Composable
 private fun BottomToolbarPreview(){
+    val fakeUiState = GalleryUiState(
+        uploadStatus = UploadStatus.UPLOADING
+    )
     BottomToolbar(
+        uiState = fakeUiState,
         onDeleteClicked = {},
         onSharedClicked = {},
         onBackFabClicked = {},
