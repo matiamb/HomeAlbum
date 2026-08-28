@@ -14,11 +14,12 @@ Beta: HomeAlbum is currently in early development and may contain bugs or incomp
 - Background uploads using Android WorkManager
 - Network and battery constraints for background uploads
 
-<img width="250" height="505" alt="Screenshot_20260814_112758_HomeAlbum" src="https://github.com/user-attachments/assets/56c91478-c599-49f0-a341-c991a258ce90" />
-<img width="250" height="505" alt="Screenshot_20260814_112827_HomeAlbum" src="https://github.com/user-attachments/assets/d79b6b87-902d-4e4b-ab0c-9178d0b89df2" />
+<img width="250" height="505" alt="Screenshot_20260828_154758_HomeAlbum" src="https://github.com/user-attachments/assets/49cc8c03-3c3f-4a1d-b269-7fba96195c60" />
+<img width="250" height="505" alt="Screenshot_20260828_154833_HomeAlbum" src="https://github.com/user-attachments/assets/2881ae94-5d9a-4fd9-a013-55f55b3cfac0" />
 <img width="250" height="505" alt="Screenshot_20260814_112853_HomeAlbum" src="https://github.com/user-attachments/assets/fa0d9b01-0c94-4af0-95fa-709f0cea1923" />
 
 ## 📱 Requirements
+
 - Android device
 - A home server running HomeAlbum Server API
 - A private LAN connection or Tailscale connection between the Android device and the server
@@ -55,11 +56,11 @@ From the Settings screen you can configure:
 
 Example server address:
 
-`http://100.0.0.1:8080`
+`100.0.0.1:8080`
 
 or when using Tailscale:
 
-`http://tailscale-ip:8080`
+`tailscale-ip:8080`
 
 **Do not expose the server directly to the public Internet with the current version of HomeAlbum.**
 
@@ -70,7 +71,6 @@ Known limitations include:
 
 - Only one media file can currently be uploaded manually at a time
 - Media file server existence checks are currently performed one file at a time
-- Some gallery animations may behave incorrectly
 - Pending uploads may not always resume correctly after losing network connectivity
 
 These limitations are expected to change during development.
@@ -110,6 +110,6 @@ Please remove personal or sensitive information before attaching logs or screens
 
 HomeAlbum is currently under active development.
 
-Current release: v0.1.0-beta.1
+Current release: v0.2.0-beta.1
 
 The API and application behavior may change while the project remains in beta.
