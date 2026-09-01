@@ -39,4 +39,12 @@ interface ServerApiService{
     suspend fun checkDiskSpace(
         @Url savedUrl: String
     ): DiskSpaceResponse
+    @Multipart
+    @POST
+    suspend fun uploadMultipleFiles(
+        @Part fileList: List<MultipartBody.Part>,
+        @Url savedUrl: String,
+        @Query("fileHash") fileHashList: List<String>,
+        @Part("folderName") folderName: RequestBody
+    ): Response<ResponseBody>
 }

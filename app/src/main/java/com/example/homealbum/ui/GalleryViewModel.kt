@@ -201,6 +201,19 @@ class GalleryViewModel(
             it.copy(multipleSelectionSet = emptySet())
         }
     }
+    fun startMultipleUpload(){
+        viewModelScope.launch {
+            if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
+                uploadScheduler.scheduleMultipleUpload(
+                    uriList = galleryUiState.value.multipleSelectionSet,
+                    allowUploadMobileData = userSettings.value.allowUploadMobileData)
+            } else {
+                _toastMessage.emit(
+                    ToastText(message = R.string.local_backup_is_disabled_msg)
+                )
+            }
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
             uploadScheduler.uploadStatus.collect { status ->

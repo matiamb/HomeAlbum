@@ -19,6 +19,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -92,16 +94,31 @@ fun GalleryScreen(
         topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
         floatingActionButton = {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
-                FloatingActionButton(
-                    onClick = {
-                        galleryViewModel.clearMultipleSelectionSet()
-                    }
+                Column(
+                    horizontalAlignment = Alignment.End
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = ""
-                    )
+                    SmallFloatingActionButton(
+                        onClick = {
+                            galleryViewModel.startMultipleUpload()
+                        }
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_upload_24),
+                            contentDescription = ""
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = {
+                            galleryViewModel.clearMultipleSelectionSet()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = ""
+                        )
+                    }
                 }
+
             } else {
                 SettingsFab(
                     onSettingsFabClicked,
