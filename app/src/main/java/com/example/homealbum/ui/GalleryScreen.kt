@@ -16,6 +16,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -82,14 +85,29 @@ fun GalleryScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     Scaffold(
-        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
         floatingActionButton = {
-            SettingsFab(
-                onSettingsFabClicked,
-                sharedTransitionScope,
-                animatedVisibilityScope
-            )
+            if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
+                FloatingActionButton(
+                    onClick = {
+                        galleryViewModel.clearMultipleSelectionSet()
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = ""
+                    )
+                }
+            } else {
+                SettingsFab(
+                    onSettingsFabClicked,
+                    sharedTransitionScope,
+                    animatedVisibilityScope
+                )
+            }
         },
     ) { innerPadding ->
         val context = LocalContext.current
@@ -133,7 +151,16 @@ fun GalleryScreen(
         if(hasPermission){
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
-                onImageClicked = onImageClicked,
+                onImageClicked = { index, uri ->
+                    if (galleryUiState.value.multipleSelectionSet.isEmpty()){
+                        onImageClicked(index)
+                    } else {
+                        galleryViewModel.multipleSelection(uri)
+                    }
+                                 },
+                onImageLongClick = { uri ->
+                    galleryViewModel.multipleSelection(uri)
+                },
                 onRefresh = {galleryViewModel.loadPhotos()},
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
@@ -159,7 +186,8 @@ fun GalleryScreen(
 @Composable
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
-    onImageClicked: (Int) -> Unit,
+    onImageClicked: (Int, Uri) -> Unit,
+    onImageLongClick: (Uri) -> Unit,
     onRefresh: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -175,7 +203,9 @@ private fun GalleryGrid(
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -201,6 +231,7 @@ private fun GalleryGrid(
                                     galleryViewModel = galleryViewModel,
                                     index = item.originalIndex,
                                     onImageClicked = onImageClicked,
+                                    onImageLongClick = onImageLongClick,
                                     modifier = Modifier.sharedElement(
                                         sharedContentState = rememberSharedContentState(
                                             key = "media-${item.originalIndex}"
@@ -312,7 +343,8 @@ fun ImageThumbnail(
     mediaItem: MediaItem,
     galleryViewModel: GalleryViewModel,
     index: Int,
-    onImageClicked: (Int) -> Unit,
+    onImageClicked: (Int, Uri) -> Unit,
+    onImageLongClick: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ){
     /**
@@ -322,6 +354,7 @@ fun ImageThumbnail(
     val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
         value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
     }
+    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     val context = LocalContext.current
     val imageKey = "media-$index-${mediaItem.uri}"
     Box(
@@ -336,7 +369,12 @@ fun ImageThumbnail(
             contentDescription = "",
             modifier = Modifier
                 .height(150.dp)
-                .clickable(true, onClick = { onImageClicked(index) }),
+                //.clickable(true, onClick = { onImageClicked(index) }),
+                .combinedClickable(
+                    enabled = true,
+                    onClick = { onImageClicked(index, mediaItem.uri) },
+                    onLongClick = { onImageLongClick(mediaItem.uri) }
+                ),
             contentScale = ContentScale.Crop
         )
         if (mediaItem.isVideo){
@@ -344,6 +382,14 @@ fun ImageThumbnail(
                 Icons.Filled.PlayArrow,
                 contentDescription = ""
             )
+        }
+        if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
+            if (galleryUiState.value.multipleSelectionSet.contains(mediaItem.uri)){
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = ""
+                )
+            }
         }
     }
 }
