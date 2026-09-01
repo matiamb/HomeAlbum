@@ -186,8 +186,14 @@ class GalleryViewModel(
         }
     }
     fun multipleSelection(uri: Uri){
-        _galleryUiState.update {
-            it.copy(multipleSelectionSet = it.multipleSelectionSet + uri)
+        if (galleryUiState.value.multipleSelectionSet.contains(uri)){
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet - uri)
+            }
+        } else {
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet + uri)
+            }
         }
     }
     fun clearMultipleSelectionSet(){
