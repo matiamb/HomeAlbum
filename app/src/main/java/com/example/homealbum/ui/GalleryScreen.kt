@@ -13,9 +13,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +25,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -57,10 +59,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -82,14 +86,29 @@ fun GalleryScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     Scaffold(
-        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
         floatingActionButton = {
-            SettingsFab(
-                onSettingsFabClicked,
-                sharedTransitionScope,
-                animatedVisibilityScope
-            )
+            if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
+                FloatingActionButton(
+                    onClick = {
+                        galleryViewModel.clearMultipleSelectionSet()
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = ""
+                    )
+                }
+            } else {
+                SettingsFab(
+                    onSettingsFabClicked,
+                    sharedTransitionScope,
+                    animatedVisibilityScope
+                )
+            }
         },
     ) { innerPadding ->
         val context = LocalContext.current
@@ -133,7 +152,16 @@ fun GalleryScreen(
         if(hasPermission){
             GalleryGrid(
                 galleryViewModel = galleryViewModel,
-                onImageClicked = onImageClicked,
+                onImageClicked = { index, uri ->
+                    if (galleryUiState.value.multipleSelectionSet.isEmpty()){
+                        onImageClicked(index)
+                    } else {
+                        galleryViewModel.multipleSelection(uri)
+                    }
+                                 },
+                onImageLongClick = { uri ->
+                    galleryViewModel.multipleSelection(uri)
+                },
                 onRefresh = {galleryViewModel.loadPhotos()},
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
@@ -159,7 +187,8 @@ fun GalleryScreen(
 @Composable
 private fun GalleryGrid(
     galleryViewModel: GalleryViewModel,
-    onImageClicked: (Int) -> Unit,
+    onImageClicked: (Int, Uri) -> Unit,
+    onImageLongClick: (Uri) -> Unit,
     onRefresh: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -175,7 +204,9 @@ private fun GalleryGrid(
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -201,6 +232,7 @@ private fun GalleryGrid(
                                     galleryViewModel = galleryViewModel,
                                     index = item.originalIndex,
                                     onImageClicked = onImageClicked,
+                                    onImageLongClick = onImageLongClick,
                                     modifier = Modifier.sharedElement(
                                         sharedContentState = rememberSharedContentState(
                                             key = "media-${item.originalIndex}"
@@ -263,26 +295,35 @@ private fun GalleryTopBar(
             )
         },
         actions = {
-            IconButton(
-                onClick = onServerCheckClick
-            ) {
-                when(uiState.serverConnectionStatus){
-                    ServerConnectionStatus.CHECKING -> {
-                        CircularProgressIndicator()
-                    }
-                    ServerConnectionStatus.CONNECTED -> {
-                        Icon(
-                            painterResource(R.drawable.outline_computer_24),
-                            contentDescription = "",
-                            tint = Color(0xff2eef68)
-                        )
-                    }
-                    ServerConnectionStatus.FAILED -> {
-                        Icon(
-                            painterResource(R.drawable.outline_mimo_disconnect_24),
-                            contentDescription = "",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+            if (uiState.multipleSelectionSet.isNotEmpty()){
+                Text(
+                    text = uiState.multipleSelectionSet.size.toString(),
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                IconButton(
+                    onClick = onServerCheckClick
+                ) {
+                    when(uiState.serverConnectionStatus){
+                        ServerConnectionStatus.CHECKING -> {
+                            CircularProgressIndicator()
+                        }
+                        ServerConnectionStatus.CONNECTED -> {
+                            Icon(
+                                painterResource(R.drawable.outline_computer_24),
+                                contentDescription = "",
+                                tint = Color(0xff2eef68)
+                            )
+                        }
+                        ServerConnectionStatus.FAILED -> {
+                            Icon(
+                                painterResource(R.drawable.outline_mimo_disconnect_24),
+                                contentDescription = "",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -312,7 +353,8 @@ fun ImageThumbnail(
     mediaItem: MediaItem,
     galleryViewModel: GalleryViewModel,
     index: Int,
-    onImageClicked: (Int) -> Unit,
+    onImageClicked: (Int, Uri) -> Unit,
+    onImageLongClick: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ){
     /**
@@ -322,11 +364,21 @@ fun ImageThumbnail(
     val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
         value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
     }
+    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     val context = LocalContext.current
     val imageKey = "media-$index-${mediaItem.uri}"
+    val haptic = LocalHapticFeedback.current
+    val selectedPadding by animateDpAsState(
+        targetValue = if (galleryUiState.value.multipleSelectionSet.isNotEmpty()
+            && galleryUiState.value.multipleSelectionSet.contains(mediaItem.uri)){
+            8.dp
+        } else {
+            0.dp
+        }
+    )
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
+        modifier = modifier.animateContentSize()
     ){
         AsyncImage(
             model = ImageRequest.Builder(context)
@@ -336,7 +388,17 @@ fun ImageThumbnail(
             contentDescription = "",
             modifier = Modifier
                 .height(150.dp)
-                .clickable(true, onClick = { onImageClicked(index) }),
+                //.clickable(true, onClick = { onImageClicked(index) }),
+                .combinedClickable(
+                    enabled = true,
+                    onClick = { onImageClicked(index, mediaItem.uri) },
+                    onLongClick = {
+                        haptic.performHapticFeedback(
+                            hapticFeedbackType = HapticFeedbackType.LongPress
+                        )
+                        onImageLongClick(mediaItem.uri)
+                    }
+                ).padding(selectedPadding),
             contentScale = ContentScale.Crop
         )
         if (mediaItem.isVideo){
@@ -344,6 +406,16 @@ fun ImageThumbnail(
                 Icons.Filled.PlayArrow,
                 contentDescription = ""
             )
+        }
+        if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
+            if (galleryUiState.value.multipleSelectionSet.contains(mediaItem.uri)){
+                Icon(
+                    painterResource(R.drawable.baseline_check_circle_24),
+                    contentDescription = "",
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

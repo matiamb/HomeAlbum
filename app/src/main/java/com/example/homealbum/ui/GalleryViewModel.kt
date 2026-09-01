@@ -185,6 +185,22 @@ class GalleryViewModel(
 
         }
     }
+    fun multipleSelection(uri: Uri){
+        if (galleryUiState.value.multipleSelectionSet.contains(uri)){
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet - uri)
+            }
+        } else {
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet + uri)
+            }
+        }
+    }
+    fun clearMultipleSelectionSet(){
+        _galleryUiState.update {
+            it.copy(multipleSelectionSet = emptySet())
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
             uploadScheduler.uploadStatus.collect { status ->
