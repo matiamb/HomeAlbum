@@ -29,9 +29,9 @@ class MultipleUploadWorker(context: Context, workerParams: WorkerParameters) : C
             uriList.add(uriString.toUri())
         }
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
-//        if (uriList.isEmpty()){
-//            Result.failure()
-//        }
+        if (uriList.isEmpty()){
+            Result.failure()
+        }
         return try {
             val serverResponse = photoRepository.uploadMultipleFiles(uriList)
             if (serverResponse.isSuccessful){

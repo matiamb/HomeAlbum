@@ -89,8 +89,9 @@ class WorkManagerUploadScheduler(
                 workDataOf(MultipleUploadWorker.KEY_LIST_URI to uriList.map { it.toString() }.toTypedArray())
             )
             .build()
+        val sortedUriList = uriList.sortedBy { it.toString() }
         workManager.enqueueUniqueWork(
-            uniqueWorkName = "multiple_upload_${uriList.size}",
+            uniqueWorkName = "multiple_upload_${sortedUriList.hashCode()}",
             existingWorkPolicy = ExistingWorkPolicy.REPLACE,
             request = request
         )

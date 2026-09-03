@@ -206,7 +206,9 @@ class GalleryViewModel(
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
                 uploadScheduler.scheduleMultipleUpload(
                     uriList = galleryUiState.value.multipleSelectionSet,
-                    allowUploadMobileData = userSettings.value.allowUploadMobileData)
+                    allowUploadMobileData = userSettings.value.allowUploadMobileData
+                )
+                clearMultipleSelectionSet()
             } else {
                 _toastMessage.emit(
                     ToastText(message = R.string.local_backup_is_disabled_msg)
