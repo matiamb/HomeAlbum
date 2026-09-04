@@ -18,8 +18,13 @@ interface UploadScheduler {
         uri: Uri,
         allowUploadMobileData: Boolean
     )
+    fun scheduleMultipleUpload(
+        uriList: Set<Uri>,
+        allowUploadMobileData: Boolean
+    )
 }
 private const val UPLOAD_TAG = "upload"
+private const val MULTIPLE_UPLOAD_TAG = "multiple_upload"
 
 class WorkManagerUploadScheduler(
     private val workManager: WorkManager
@@ -59,6 +64,34 @@ class WorkManagerUploadScheduler(
             .build()
         workManager.enqueueUniqueWork(
             uniqueWorkName = "upload_$uri",
+            existingWorkPolicy = ExistingWorkPolicy.REPLACE,
+            request = request
+        )
+    }
+
+    override fun scheduleMultipleUpload(
+        uriList: Set<Uri>,
+        allowUploadMobileData: Boolean
+    ) {
+        val networkType = if (allowUploadMobileData){
+            NetworkType.CONNECTED
+        } else {
+            NetworkType.UNMETERED
+        }
+        val constraints= Constraints.Builder()
+            .setRequiredNetworkType(networkType)
+            .setRequiresBatteryNotLow(true)
+            .build()
+        val request = OneTimeWorkRequestBuilder<MultipleUploadWorker>()
+            .addTag(MULTIPLE_UPLOAD_TAG)
+            .setConstraints(constraints)
+            .setInputData(
+                workDataOf(MultipleUploadWorker.KEY_LIST_URI to uriList.map { it.toString() }.toTypedArray())
+            )
+            .build()
+        val sortedUriList = uriList.sortedBy { it.toString() }
+        workManager.enqueueUniqueWork(
+            uniqueWorkName = "multiple_upload_${sortedUriList.hashCode()}",
             existingWorkPolicy = ExistingWorkPolicy.REPLACE,
             request = request
         )

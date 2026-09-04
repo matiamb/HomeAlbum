@@ -3,6 +3,7 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.example.homealbum.model.FileToUpload
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -17,11 +18,14 @@ import okio.BufferedSink
 import okio.source
 import retrofit2.Response
 import java.security.MessageDigest
+import java.util.Collections.emptyList
+import java.util.Collections.emptySet
 
 interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
     suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
     suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody>
+    suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody>
 }
 
 class NetworkPhotoRepository(
@@ -82,6 +86,52 @@ class NetworkPhotoRepository(
         val endpoint = "http://$serverIp/api/v1/media/delete"
         val fileHash = getFileHash(fileUri)
         serverApiService.deleteMediaFile(endpoint, fileHash)
+    }
+
+    override suspend fun uploadMultipleFiles(uriList: List<Uri>) = withContext(Dispatchers.IO){
+        val settings = offlineSettingsRepository.userSettingsFlow.first()
+        val serverIp = settings.serverIp
+        val folderName = settings.serverFolderName
+        val fileToUploadList = mutableListOf<FileToUpload>()
+        val folderRequestBody = folderName.toRequestBody("text/plain".toMediaTypeOrNull())
+
+        val dynamicUrl = serverIp.trimEnd('/')
+        val endpoint = "http://$dynamicUrl/api/v1/media/multipleUpload"
+        if (serverIp.isBlank()){
+            throw IllegalArgumentException("Please enter a valid ip")
+        }
+        for (uri in uriList){
+            val fileHash = getFileHash(uri)
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri) ?: "application/octet_stream"
+            val fileName = getFileNameFromUri(context, uri) ?: "unnamed_file"
+
+            val mediaRequestBody = object : RequestBody() {
+                override fun contentType(): MediaType? = mimeType.toMediaTypeOrNull()
+
+                override fun writeTo(sink: BufferedSink) {
+                    contentResolver.openInputStream(uri)?.use { inputStream ->
+                        sink.writeAll(inputStream.source())
+                    }
+                }
+
+            }
+            val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)
+            fileToUploadList.add(
+                FileToUpload(
+                    filePart = filePart,
+                    fileHash = fileHash!!
+                )
+            )
+        }
+        val files = fileToUploadList.map { it.filePart }
+        val hashes = fileToUploadList.map { it.fileHash }
+        serverApiService.uploadMultipleFiles(
+            fileList = files,
+            savedUrl = endpoint,
+            fileHashList = hashes,
+            folderName = folderRequestBody
+        )
     }
 
     private fun getFileNameFromUri(
