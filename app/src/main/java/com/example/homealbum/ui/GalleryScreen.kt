@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,6 +88,7 @@ fun GalleryScreen(
 ){
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
+    val context = LocalContext.current
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -94,31 +96,18 @@ fun GalleryScreen(
         topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
         floatingActionButton = {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            galleryViewModel.startMultipleUpload()
-                        }
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.outline_cloud_upload_24),
-                            contentDescription = ""
-                        )
+                FabButtonsColumn(
+                    onUploadClicked = {
+                        galleryViewModel.startMultipleUpload()
+                    },
+                    onShareClicked = {
+                        sharePhoto(context, galleryUiState.value.multipleSelectionSet)
+                        galleryViewModel.clearMultipleSelectionSet()
+                    },
+                    onClearSelectionClicked = {
+                        galleryViewModel.clearMultipleSelectionSet()
                     }
-                    FloatingActionButton(
-                        onClick = {
-                            galleryViewModel.clearMultipleSelectionSet()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = ""
-                        )
-                    }
-                }
-
+                )
             } else {
                 SettingsFab(
                     onSettingsFabClicked,
@@ -436,12 +425,60 @@ fun ImageThumbnail(
         }
     }
 }
+@Composable
+fun FabButtonsColumn(
+    onUploadClicked: () -> Unit,
+    onShareClicked: () -> Unit,
+    onClearSelectionClicked: () -> Unit,
+    modifier: Modifier = Modifier
+){
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SmallFloatingActionButton(
+            onClick = onShareClicked
+        ) {
+            Icon(
+                Icons.Filled.Share,
+                contentDescription = "Share"
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onUploadClicked
+        ) {
+            Icon(
+                painterResource(R.drawable.outline_cloud_upload_24),
+                contentDescription = "Upload"
+            )
+        }
+        FloatingActionButton(
+            onClick = onClearSelectionClicked
+        ) {
+            Icon(
+                imageVector = Icons.Default.Clear,
+                contentDescription = "Clear selection"
+            )
+        }
+    }
+}
 
 private fun openPermissionSettings(context: Context){
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
         data = Uri.fromParts("package", context.packageName, null)
     }
     context.startActivity(intent)
+}
+private fun sharePhoto(context: Context, uriSet: Set<Uri>){
+    val uriArray = ArrayList(uriSet)
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND_MULTIPLE
+        putExtra(Intent.EXTRA_STREAM, uriArray)
+        type = "*/*"
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+    val appChooser = Intent.createChooser(shareIntent, "Share on...")
+    context.startActivity(appChooser)
 }
 
 @Preview(showSystemUi = true)
