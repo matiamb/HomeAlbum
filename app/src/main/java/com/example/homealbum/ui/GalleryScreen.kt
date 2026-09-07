@@ -434,7 +434,7 @@ fun FabButtonsColumn(
 ){
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         SmallFloatingActionButton(
             onClick = onShareClicked
@@ -453,7 +453,8 @@ fun FabButtonsColumn(
             )
         }
         FloatingActionButton(
-            onClick = onClearSelectionClicked
+            onClick = onClearSelectionClicked,
+            modifier = Modifier.padding(top = 4.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Clear,
@@ -481,7 +482,7 @@ private fun sharePhoto(context: Context, uriSet: Set<Uri>){
     context.startActivity(appChooser)
 }
 
-@Preview(showSystemUi = true)
+@Preview(showSystemUi = false)
 @Composable
 private fun RequestPermissionPreview(){
     RequestPermissionFab(
