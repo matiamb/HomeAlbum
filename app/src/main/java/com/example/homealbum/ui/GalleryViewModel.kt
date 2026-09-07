@@ -100,11 +100,21 @@ class GalleryViewModel(
 
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
-            val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(setOf(uri))
             if (intentSenderRequest != null) {
                 onIntentReady(intentSenderRequest)
             } else {
-                removeThrashedPhotoFromUi(uri)
+                removeThrashedPhotoFromUi(setOf(uri))
+            }
+        }
+    }
+    fun requestTrashPhoto(onIntentReady: (IntentSenderRequest) -> Unit){
+        viewModelScope.launch {
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(galleryUiState.value.multipleSelectionSet)
+            if (intentSenderRequest != null) {
+                onIntentReady(intentSenderRequest)
+            } else {
+                removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
             }
         }
     }
@@ -120,9 +130,11 @@ class GalleryViewModel(
             }
         }
     }
-    fun removeThrashedPhotoFromUi(uri: Uri){
-        _galleryUiState.update { state ->
-            state.copy(photoList = state.photoList.filter { it.uri != uri })
+    fun removeThrashedPhotoFromUi(uriSet: Set<Uri>){
+        for (uri in uriSet){
+            _galleryUiState.update { state ->
+                state.copy(photoList = state.photoList.filter { it.uri != uri })
+            }
         }
     }
     fun uploadPhoto(

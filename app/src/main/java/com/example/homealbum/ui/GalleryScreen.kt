@@ -1,6 +1,7 @@
 package com.example.homealbum.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -89,6 +91,16 @@ fun GalleryScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     val context = LocalContext.current
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) {result ->
+        if (result.resultCode == Activity.RESULT_OK){
+            galleryViewModel.removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
+            galleryViewModel.loadPhotos()
+            galleryViewModel.clearMultipleSelectionSet()
+            //galleryViewModel.removeMediaFromServer(currentUri)
+        }
+    }
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -97,6 +109,11 @@ fun GalleryScreen(
         floatingActionButton = {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
                 FabButtonsColumn(
+                    onDeleteClicked = {
+                        galleryViewModel.requestTrashPhoto(){ intentSenderRequest ->
+                            deleteLauncher.launch(intentSenderRequest)
+                        }
+                    },
                     onUploadClicked = {
                         galleryViewModel.startMultipleUpload()
                     },
@@ -427,6 +444,7 @@ fun ImageThumbnail(
 }
 @Composable
 fun FabButtonsColumn(
+    onDeleteClicked: () -> Unit,
     onUploadClicked: () -> Unit,
     onShareClicked: () -> Unit,
     onClearSelectionClicked: () -> Unit,
@@ -436,6 +454,14 @@ fun FabButtonsColumn(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        SmallFloatingActionButton(
+            onClick = onDeleteClicked
+        ) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "Delete"
+            )
+        }
         SmallFloatingActionButton(
             onClick = onShareClicked
         ) {

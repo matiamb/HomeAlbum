@@ -9,6 +9,7 @@ import androidx.work.workDataOf
 
 interface DeleteScheduler{
     fun scheduleDelete(uri: Uri)
+    fun scheduleMultipleDelete(uriSet: Set<Uri>)
 }
 
 class WorkManagerDeleteScheduler(
@@ -26,6 +27,10 @@ class WorkManagerDeleteScheduler(
             )
             .build()
         workManager.enqueue(request)
+    }
+
+    override fun scheduleMultipleDelete(uriSet: Set<Uri>) {
+        TODO("Not yet implemented")
     }
 
 }
