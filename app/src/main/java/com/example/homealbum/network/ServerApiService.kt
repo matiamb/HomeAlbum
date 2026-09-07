@@ -33,7 +33,7 @@ interface ServerApiService{
     @DELETE
     suspend fun deleteMediaFile(
         @Url savedUrl: String,
-        @Query("fileHash") fileHash: String?
+        @Query("fileHash") fileHashList: List<String?>
     ): Response<ResponseBody>
     @GET
     suspend fun checkDiskSpace(

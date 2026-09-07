@@ -95,11 +95,11 @@ fun ImageScreen(
             val photoCount = uiState.value.photoList.size
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
-                galleryViewModel.removeMediaFromServer(currentUri)
+                galleryViewModel.removeMediaFromServer(setOf(currentUri))
                 onLastPhotoDeleted()
             } else {
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
-                galleryViewModel.removeMediaFromServer(currentUri)
+                galleryViewModel.removeMediaFromServer(setOf(currentUri))
             }
         }
     }

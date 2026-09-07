@@ -96,9 +96,9 @@ fun GalleryScreen(
     ) {result ->
         if (result.resultCode == Activity.RESULT_OK){
             galleryViewModel.removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
+            galleryViewModel.removeMediaFromServer(galleryUiState.value.multipleSelectionSet)
             galleryViewModel.loadPhotos()
             galleryViewModel.clearMultipleSelectionSet()
-            //galleryViewModel.removeMediaFromServer(currentUri)
         }
     }
     Scaffold(
