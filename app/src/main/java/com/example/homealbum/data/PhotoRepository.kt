@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 interface PhotoRepository{
     suspend fun getLocalPhotos(): List<MediaItem>
-    suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest?
+    suspend fun prepareToTrashPhoto(uriSet: Set<Uri>): IntentSenderRequest?
     suspend fun getThumbnail(
         uri: Uri,
         width: Int,
@@ -90,19 +90,21 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
         }
         return@withContext photoList
     }
-    override suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? = withContext(Dispatchers.IO) {
+    override suspend fun prepareToTrashPhoto(uriSet: Set<Uri>): IntentSenderRequest? = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val pendingIntent = MediaStore.createTrashRequest(
                 contentResolver,
-                listOf(uri),
+                uriSet,
                 true
             )
             IntentSenderRequest.Builder(pendingIntent.intentSender).build()
         } else {
             try {
-                contentResolver.delete(uri, null, null)
+                for (uri in uriSet){
+                    contentResolver.delete(uri, null, null)
+                }
             } catch (e: SecurityException) {
                 throw e
             }

@@ -24,7 +24,7 @@ import java.util.Collections.emptySet
 interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
     suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
-    suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody>
+    suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody>
     suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody>
 }
 
@@ -81,11 +81,14 @@ class NetworkPhotoRepository(
         )
     }
 
-    override suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody> = withContext(Dispatchers.IO) {
+    override suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody> = withContext(Dispatchers.IO) {
         val serverIp = offlineSettingsRepository.userSettingsFlow.first().serverIp
         val endpoint = "http://$serverIp/api/v1/media/delete"
-        val fileHash = getFileHash(fileUri)
-        serverApiService.deleteMediaFile(endpoint, fileHash)
+        val hashList = mutableListOf<String?>()
+        for (uri in uriList){
+            hashList.add(getFileHash(uri))
+        }
+        serverApiService.deleteMediaFile(endpoint, hashList)
     }
 
     override suspend fun uploadMultipleFiles(uriList: List<Uri>) = withContext(Dispatchers.IO){

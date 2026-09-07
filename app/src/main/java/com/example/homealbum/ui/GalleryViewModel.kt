@@ -100,29 +100,41 @@ class GalleryViewModel(
 
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
-            val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(setOf(uri))
             if (intentSenderRequest != null) {
                 onIntentReady(intentSenderRequest)
             } else {
-                removeThrashedPhotoFromUi(uri)
+                removeThrashedPhotoFromUi(setOf(uri))
             }
         }
     }
-    fun removeMediaFromServer(uri: Uri){
+    fun requestTrashPhoto(onIntentReady: (IntentSenderRequest) -> Unit){
+        viewModelScope.launch {
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(galleryUiState.value.multipleSelectionSet)
+            if (intentSenderRequest != null) {
+                onIntentReady(intentSenderRequest)
+            } else {
+                removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
+            }
+        }
+    }
+    fun removeMediaFromServer(uriSet: Set<Uri>){
         viewModelScope.launch {
             try {
-                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-                if (isFileInServer.isSuccessful){
-                    deleteScheduler.scheduleDelete(uri)
-                }
+                //val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
+                //if (isFileInServer.isSuccessful){
+                    deleteScheduler.scheduleDelete(uriSet)
+                //}
             } catch (e: IOException){
-                deleteScheduler.scheduleDelete(uri)
+                deleteScheduler.scheduleDelete(uriSet)
             }
         }
     }
-    fun removeThrashedPhotoFromUi(uri: Uri){
-        _galleryUiState.update { state ->
-            state.copy(photoList = state.photoList.filter { it.uri != uri })
+    fun removeThrashedPhotoFromUi(uriSet: Set<Uri>){
+        for (uri in uriSet){
+            _galleryUiState.update { state ->
+                state.copy(photoList = state.photoList.filter { it.uri != uri })
+            }
         }
     }
     fun uploadPhoto(
