@@ -1,13 +1,16 @@
 package com.example.homealbum.data
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Size
 import androidx.activity.result.IntentSenderRequest
+import androidx.annotation.RequiresApi
 import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +23,7 @@ interface PhotoRepository{
         width: Int,
         height: Int
     ): Bitmap?
+    suspend fun getTrashedFiles(): List<MediaItem>
 }
 class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
     /**
@@ -132,5 +136,73 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
         } else {
             null
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override suspend fun getTrashedFiles(): List<MediaItem> = withContext(Dispatchers.IO) {
+        val trashedFilesList = mutableListOf<MediaItem>()
+
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+
+        val columns = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DATE_TAKEN
+        )
+
+        val queryArgs = Bundle().apply {
+            putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+            putString(ContentResolver.QUERY_ARG_SQL_SELECTION,"${MediaStore.Files.FileColumns.IS_TRASHED} = ?")
+            putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("1"))
+            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC")
+        }
+//        val cameraOnlyFiles = "${MediaStore.Files.FileColumns.IS_TRASHED} = ?"
+//        val argumentSelection = arrayOf("1")
+//
+//        val displayOrder = "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC"
+
+        context.contentResolver.query(
+            collection,
+            columns,
+            queryArgs,
+            null
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
+
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val mediaType = cursor.getInt(typeColumn)
+                val dateTaken = cursor.getLong(dateColumn)
+                val mediaItem: MediaItem =
+                    if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
+                        MediaItem(
+                            ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            ),
+                            isVideo = false,
+                            dateTaken = dateTaken
+                        )
+                    } else {
+                        MediaItem(
+                            uri = ContentUris.withAppendedId(
+                                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            ),
+                            isVideo = true,
+                            dateTaken = dateTaken
+                        )
+                    }
+
+                trashedFilesList.add(mediaItem)
+            }
+        }
+        return@withContext trashedFilesList
     }
 }

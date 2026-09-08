@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -85,6 +86,7 @@ fun GalleryScreen(
     galleryViewModel: GalleryViewModel,
     onSettingsFabClicked: () -> Unit,
     onImageClicked: (Int) -> Unit,
+    onSmallFabClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ){
@@ -126,11 +128,24 @@ fun GalleryScreen(
                     }
                 )
             } else {
-                SettingsFab(
-                    onSettingsFabClicked,
-                    sharedTransitionScope,
-                    animatedVisibilityScope
-                )
+                Column(
+
+                ) {
+                    SmallFloatingActionButton(
+                        onClick = onSmallFabClicked
+                    ) {
+                        Icon(
+                            Icons.Default.ShoppingCart,
+                            contentDescription = "Trash can"
+                        )
+                    }
+                    SettingsFab(
+                        onSettingsFabClicked,
+                        sharedTransitionScope,
+                        animatedVisibilityScope
+                    )
+                }
+
             }
         },
     ) { innerPadding ->
