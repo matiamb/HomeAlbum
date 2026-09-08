@@ -2,6 +2,7 @@ package com.example.homealbum.data
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -24,6 +25,7 @@ interface PhotoRepository{
         height: Int
     ): Bitmap?
     suspend fun getTrashedFiles(): List<MediaItem>
+    suspend fun restoreFiles(uriSet: Set<Uri>): IntentSenderRequest?
 }
 class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
     /**
@@ -160,10 +162,6 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
             putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("1"))
             putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC")
         }
-//        val cameraOnlyFiles = "${MediaStore.Files.FileColumns.IS_TRASHED} = ?"
-//        val argumentSelection = arrayOf("1")
-//
-//        val displayOrder = "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC"
 
         context.contentResolver.query(
             collection,
@@ -204,5 +202,17 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
             }
         }
         return@withContext trashedFilesList
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override suspend fun restoreFiles(uriSet: Set<Uri>): IntentSenderRequest? =
+        withContext(Dispatchers.IO) {
+            val cr = context.contentResolver
+            val pendingIntent = MediaStore.createTrashRequest(
+                cr,
+                uriSet,
+                false
+            )
+            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
     }
 }

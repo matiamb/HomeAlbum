@@ -129,13 +129,13 @@ fun GalleryScreen(
                 )
             } else {
                 Column(
-
+                    horizontalAlignment = Alignment.End
                 ) {
                     SmallFloatingActionButton(
                         onClick = onSmallFabClicked
                     ) {
                         Icon(
-                            Icons.Default.ShoppingCart,
+                            Icons.Default.Delete,
                             contentDescription = "Trash can"
                         )
                     }

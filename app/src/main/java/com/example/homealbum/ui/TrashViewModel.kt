@@ -1,6 +1,8 @@
 package com.example.homealbum.ui
 
+import android.net.Uri
 import android.util.Log
+import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -18,18 +20,44 @@ import kotlinx.coroutines.launch
 class TrashViewModel(
     private val photoRepository: PhotoRepository
 ) : ViewModel() {
-    init {
-        loadTrashedFiles()
-    }
     private val _trashUiState = MutableStateFlow(TrashUiState())
     val trashUiState: StateFlow<TrashUiState> = _trashUiState.asStateFlow()
     fun loadTrashedFiles(){
         viewModelScope.launch {
+            _trashUiState.update {
+                it.copy(isRefreshing = true)
+            }
             val trashedFilesList = photoRepository.getTrashedFiles()
             _trashUiState.update {
                 it.copy(trashedFilesList = trashedFilesList)
             }
-            Log.d("Mati", "trashFilesList size: ${trashUiState.value.trashedFilesList.size}")
+            _trashUiState.update {
+                it.copy(isRefreshing = false)
+            }
+        }
+    }
+    fun enableMultipleSelection(uri: Uri){
+        if (trashUiState.value.multipleSelectionSet.contains(uri)){
+            _trashUiState.update {
+                it.copy( multipleSelectionSet = it.multipleSelectionSet - uri)
+            }
+        } else {
+            _trashUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet + uri)
+            }
+        }
+    }
+    fun clearMultipleSelection(){
+        _trashUiState.update {
+            it.copy(multipleSelectionSet = emptySet())
+        }
+    }
+    fun restoreFiles(onIntentReady: (IntentSenderRequest) -> Unit){
+        viewModelScope.launch {
+            val intentSenderRequest = photoRepository.restoreFiles(trashUiState.value.multipleSelectionSet)
+            if (intentSenderRequest != null){
+                onIntentReady(intentSenderRequest)
+            }
         }
     }
     companion object {
@@ -42,5 +70,8 @@ class TrashViewModel(
                 )
             }
         }
+    }
+    init {
+        loadTrashedFiles()
     }
 }
