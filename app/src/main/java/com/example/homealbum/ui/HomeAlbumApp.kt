@@ -88,7 +88,6 @@ fun HomeAlbumApp(
                     onBackFabClicked = {
                         navController.popBackStack()
                     },
-                    //index = 0,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@composable,
                 )

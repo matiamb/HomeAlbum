@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -66,6 +67,7 @@ import coil.request.ImageRequest
 import com.example.homealbum.R
 import com.example.homealbum.model.MediaItem
 import androidx.core.net.toUri
+import coil.compose.AsyncImagePainter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -118,22 +120,29 @@ fun TrashScreen(
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = modifier.padding(innerPadding).fillMaxSize()
-        ) {
-            TrashCardNotice()
-            TrashGrid(
-                trashUiState = trashUiState.value,
-                onImageClicked = { uri ->
-                    trashViewModel.enableMultipleSelection(uri)
-                },
-                onImageLongClick = { uri ->
-                    trashViewModel.enableMultipleSelection(uri)
-                },
-                onRefresh = {
-                    trashViewModel.loadTrashedFiles()
-                }
-            )
+        with(sharedTransitionScope){
+            Column(
+                modifier = modifier.padding(innerPadding).fillMaxSize().sharedBounds(
+                    sharedContentState = rememberSharedContentState(
+                        key = "trash-screen"
+                    ),
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+            ) {
+                TrashCardNotice()
+                TrashGrid(
+                    trashUiState = trashUiState.value,
+                    onImageClicked = { uri ->
+                        trashViewModel.enableMultipleSelection(uri)
+                    },
+                    onImageLongClick = { uri ->
+                        trashViewModel.enableMultipleSelection(uri)
+                    },
+                    onRefresh = {
+                        trashViewModel.loadTrashedFiles()
+                    }
+                )
+            }
         }
     }
 }
@@ -251,7 +260,8 @@ fun TrashFabColumns(
     var isNavigating by remember { mutableStateOf(false) }
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.End
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (trashUiState.multipleSelectionSet.isNotEmpty()){
             SmallFloatingActionButton(
@@ -263,7 +273,8 @@ fun TrashFabColumns(
                 )
             }
             FloatingActionButton(
-                onClick = onClearFabClicked
+                onClick = onClearFabClicked,
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Icon(
                     Icons.Filled.Clear,
@@ -277,7 +288,8 @@ fun TrashFabColumns(
                         isNavigating = true
                         onBackFabClicked()
                     }
-                }
+                },
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Icon(
                     painterResource(R.drawable.baseline_home_filled_24),
