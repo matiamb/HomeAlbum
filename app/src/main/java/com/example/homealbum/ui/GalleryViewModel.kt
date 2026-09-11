@@ -219,6 +219,7 @@ class GalleryViewModel(
             userSettings.first { it.serverIp.isNotBlank() }
             checkServerConnection()
         }
+        loadPhotos()
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
