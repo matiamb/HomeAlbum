@@ -88,7 +88,8 @@ fun GalleryScreen(
     onImageClicked: (Int) -> Unit,
     onSmallFabClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    modifier: Modifier = Modifier
 ){
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState() )
     val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
@@ -104,7 +105,7 @@ fun GalleryScreen(
         }
     }
     Scaffold(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
@@ -199,7 +200,7 @@ fun GalleryScreen(
 
         if(hasPermission){
             GalleryGrid(
-                galleryViewModel = galleryViewModel,
+                galleryUiState = galleryUiState.value,
                 onImageClicked = { index, uri ->
                     if (galleryUiState.value.multipleSelectionSet.isEmpty()){
                         onImageClicked(index)
@@ -234,7 +235,7 @@ fun GalleryScreen(
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 private fun GalleryGrid(
-    galleryViewModel: GalleryViewModel,
+    galleryUiState: GalleryUiState,
     onImageClicked: (Int, Uri) -> Unit,
     onImageLongClick: (Uri) -> Unit,
     onRefresh: () -> Unit,
@@ -242,11 +243,10 @@ private fun GalleryGrid(
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
-    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
 
     with(sharedTransitionScope){
         PullToRefreshBox(
-            isRefreshing = galleryUiState.value.isRefreshing,
+            isRefreshing = galleryUiState.isRefreshing,
             onRefresh = onRefresh,
             modifier = modifier.fillMaxSize()
         ) {
@@ -258,7 +258,7 @@ private fun GalleryGrid(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                galleryUiState.value.galleryItems.forEach { item ->
+                galleryUiState.galleryItems.forEach { item ->
                     when(item){
                         is GalleryItem.DateHeader -> {
                             item(key = "header-${item.date}",
@@ -277,7 +277,7 @@ private fun GalleryGrid(
                             item(key = item.mediaItem.uri){
                                 ImageThumbnail(
                                     mediaItem = item.mediaItem,
-                                    galleryViewModel = galleryViewModel,
+                                    galleryUiState = galleryUiState,
                                     index = item.originalIndex,
                                     onImageClicked = onImageClicked,
                                     onImageLongClick = onImageLongClick,
@@ -303,11 +303,12 @@ fun SettingsFab(
     onSettingsFabClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    modifier: Modifier = Modifier
 ){
     with(sharedTransitionScope){
         FloatingActionButton(
             onClick = onSettingsFabClicked,
-            modifier = Modifier.padding(top = 4.dp).sharedBounds(
+            modifier = modifier.padding(top = 4.dp).sharedBounds(
                 sharedContentState = rememberSharedContentState(
                     key = "settings-screen"
                 ),
@@ -327,7 +328,8 @@ fun SettingsFab(
 private fun GalleryTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     uiState: GalleryUiState,
-    onServerCheckClick: () -> Unit
+    onServerCheckClick: () -> Unit,
+    modifier: Modifier = Modifier
 ){
     CenterAlignedTopAppBar(
         title = {
@@ -376,7 +378,8 @@ private fun GalleryTopBar(
                 }
             }
         },
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        modifier = modifier
     )
 }
 
@@ -399,26 +402,23 @@ fun RequestPermissionFab(
 @Composable
 fun ImageThumbnail(
     mediaItem: MediaItem,
-    galleryViewModel: GalleryViewModel,
+    galleryUiState: GalleryUiState,
     index: Int,
     onImageClicked: (Int, Uri) -> Unit,
     onImageLongClick: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ){
-    /**
-     * Here the thumbnail value is initiated using produceState which makes this code run
-     * inside a coroutine, so we can call the getThumbnail method from the viewModel
-     */
-    val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
-        value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
+    val thumbnail = if (mediaItem.isVideo){
+        mediaItem.thumbnail
+    } else {
+        mediaItem.uri
     }
-    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     val context = LocalContext.current
     val imageKey = "media-$index-${mediaItem.uri}"
     val haptic = LocalHapticFeedback.current
     val selectedPadding by animateDpAsState(
-        targetValue = if (galleryUiState.value.multipleSelectionSet.isNotEmpty()
-            && galleryUiState.value.multipleSelectionSet.contains(mediaItem.uri)){
+        targetValue = if (galleryUiState.multipleSelectionSet.isNotEmpty()
+            && galleryUiState.multipleSelectionSet.contains(mediaItem.uri)){
             8.dp
         } else {
             0.dp
@@ -431,12 +431,12 @@ fun ImageThumbnail(
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(thumbnail)
+                .size(300, 300)
                 .memoryCacheKey(imageKey)
                 .build(),
             contentDescription = "",
             modifier = Modifier
                 .height(150.dp)
-                //.clickable(true, onClick = { onImageClicked(index) }),
                 .combinedClickable(
                     enabled = true,
                     onClick = { onImageClicked(index, mediaItem.uri) },
@@ -455,8 +455,8 @@ fun ImageThumbnail(
                 contentDescription = ""
             )
         }
-        if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
-            if (galleryUiState.value.multipleSelectionSet.contains(mediaItem.uri)){
+        if (galleryUiState.multipleSelectionSet.isNotEmpty()){
+            if (galleryUiState.multipleSelectionSet.contains(mediaItem.uri)){
                 Icon(
                     painterResource(R.drawable.baseline_check_circle_24),
                     contentDescription = "",
@@ -477,7 +477,8 @@ fun FabButtonsColumn(
 ){
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
     ) {
         SmallFloatingActionButton(
             onClick = onDeleteClicked
