@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -85,6 +86,7 @@ fun GalleryScreen(
     galleryViewModel: GalleryViewModel,
     onSettingsFabClicked: () -> Unit,
     onImageClicked: (Int) -> Unit,
+    onSmallFabClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
 ){
@@ -126,11 +128,34 @@ fun GalleryScreen(
                     }
                 )
             } else {
-                SettingsFab(
-                    onSettingsFabClicked,
-                    sharedTransitionScope,
-                    animatedVisibilityScope
-                )
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q){
+                        with(sharedTransitionScope){
+                            SmallFloatingActionButton(
+                                onClick = onSmallFabClicked,
+                                modifier = Modifier.padding(bottom = 4.dp).sharedBounds(
+                                    sharedContentState = rememberSharedContentState(
+                                        key = "trash-screen"
+                                    ),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.outline_recycling_24),
+                                    contentDescription = "Trash can"
+                                )
+                            }
+                        }
+                    }
+                    SettingsFab(
+                        onSettingsFabClicked,
+                        sharedTransitionScope,
+                        animatedVisibilityScope
+                    )
+                }
+
             }
         },
     ) { innerPadding ->
@@ -282,7 +307,7 @@ fun SettingsFab(
     with(sharedTransitionScope){
         FloatingActionButton(
             onClick = onSettingsFabClicked,
-            modifier = Modifier.sharedBounds(
+            modifier = Modifier.padding(top = 4.dp).sharedBounds(
                 sharedContentState = rememberSharedContentState(
                     key = "settings-screen"
                 ),

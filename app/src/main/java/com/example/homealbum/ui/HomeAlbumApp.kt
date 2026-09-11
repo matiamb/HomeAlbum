@@ -19,7 +19,8 @@ import androidx.navigation.navArgument
 enum class AppScreens{
     GALLERY_START,
     SETTINGS,
-    IMAGE_VIEW
+    IMAGE_VIEW,
+    TRASH_SCREEN
 }
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -28,6 +29,7 @@ fun HomeAlbumApp(
 ){
     val galleryViewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
     val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+    val trashViewModel: TrashViewModel = viewModel(factory = TrashViewModel.Factory)
     SharedTransitionLayout() {
         NavHost(
             navController = navController,
@@ -46,6 +48,9 @@ fun HomeAlbumApp(
                     },
                     onImageClicked = { index ->
                         navController.navigate(route = "${AppScreens.IMAGE_VIEW.name}/$index")
+                    },
+                    onSmallFabClicked = {
+                        navController.navigate(AppScreens.TRASH_SCREEN.name)
                     },
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@composable
@@ -73,6 +78,18 @@ fun HomeAlbumApp(
                     onLastPhotoDeleted = {navController.popBackStack()},
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@composable
+                )
+            }
+            composable(
+                route = AppScreens.TRASH_SCREEN.name
+            ) {
+                TrashScreen(
+                    trashViewModel = trashViewModel,
+                    onBackFabClicked = {
+                        navController.popBackStack()
+                    },
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@composable,
                 )
             }
         }
