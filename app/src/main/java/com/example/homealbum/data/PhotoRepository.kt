@@ -78,7 +78,8 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                                 id
                             ),
                             isVideo = false,
-                            dateTaken = dateTaken
+                            dateTaken = dateTaken,
+                            thumbnail = null
                         )
                     } else {
                         MediaItem(
@@ -87,7 +88,13 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                                 id
                             ),
                             isVideo = true,
-                            dateTaken = dateTaken
+                            dateTaken = dateTaken,
+                            thumbnail = getThumbnail(ContentUris.withAppendedId(
+                                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                id
+                            ),
+                                300,
+                                300)
                         )
                     }
 
@@ -140,15 +147,12 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
         }
     }
 
+
     @RequiresApi(Build.VERSION_CODES.R)
     override suspend fun getTrashedFiles(): List<MediaItem> = withContext(Dispatchers.IO) {
         val trashedFilesList = mutableListOf<MediaItem>()
 
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        } else {
-            MediaStore.Files.getContentUri("external")
-        }
+        val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
         val columns = arrayOf(
             MediaStore.Files.FileColumns._ID,
@@ -185,7 +189,8 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                                 id
                             ),
                             isVideo = false,
-                            dateTaken = dateTaken
+                            dateTaken = dateTaken,
+                            thumbnail = null
                         )
                     } else {
                         MediaItem(
@@ -194,7 +199,15 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                                 id
                             ),
                             isVideo = true,
-                            dateTaken = dateTaken
+                            dateTaken = dateTaken,
+                            thumbnail = getThumbnail(
+                                ContentUris.withAppendedId(
+                                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                    id
+                                ),
+                                300,
+                                300
+                            )
                         )
                     }
 

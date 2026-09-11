@@ -13,11 +13,14 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,13 +30,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -50,12 +58,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.R
 import com.example.homealbum.model.MediaItem
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -64,7 +74,8 @@ fun TrashScreen(
     trashViewModel: TrashViewModel,
     onBackFabClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    modifier: Modifier = Modifier
 ){
     val trashUiState = trashViewModel.trashUiState.collectAsState()
     val restoreLauncher = rememberLauncherForActivityResult(
@@ -80,7 +91,7 @@ fun TrashScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.app_name),
+                        text = "Trash",
                         style = MaterialTheme.typography.displayMedium
                     )
                 },
@@ -107,21 +118,24 @@ fun TrashScreen(
             )
         }
     ) { innerPadding ->
-        TrashGrid(
-            trashUiState = trashUiState.value,
-            onImageClicked = { uri ->
-                trashViewModel.enableMultipleSelection(uri)
-            },
-            onImageLongClick = { uri ->
-                trashViewModel.enableMultipleSelection(uri)
-            },
-            onRefresh = {
-                trashViewModel.loadTrashedFiles()
-            },
-            modifier = Modifier.padding(innerPadding)
-        )
+        Column(
+            modifier = modifier.padding(innerPadding).fillMaxSize()
+        ) {
+            TrashCardNotice()
+            TrashGrid(
+                trashUiState = trashUiState.value,
+                onImageClicked = { uri ->
+                    trashViewModel.enableMultipleSelection(uri)
+                },
+                onImageLongClick = { uri ->
+                    trashViewModel.enableMultipleSelection(uri)
+                },
+                onRefresh = {
+                    trashViewModel.loadTrashedFiles()
+                }
+            )
+        }
     }
-
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -166,14 +180,6 @@ fun TrashImageThumbnail(
     onImageLongClick: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ){
-    /**
-     * Here the thumbnail value is initiated using produceState which makes this code run
-     * inside a coroutine, so we can call the getThumbnail method from the viewModel
-     */
-//    val thumbnail by produceState<Bitmap?>(initialValue = null, mediaItem.uri) {
-//        value = galleryViewModel.getThumbnail(mediaItem, 300, 300)
-//    }
-//    val galleryUiState = galleryViewModel.galleryUiState.collectAsState()
     val context = LocalContext.current
     val imageKey = "media-${mediaItem.uri}"
     val haptic = LocalHapticFeedback.current
@@ -185,13 +191,18 @@ fun TrashImageThumbnail(
             0.dp
         }
     )
+    val thumbnail = if (mediaItem.isVideo){
+        mediaItem.thumbnail
+    } else{
+        mediaItem.uri
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.animateContentSize()
     ){
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data(mediaItem.uri)
+                .data(thumbnail)
                 .memoryCacheKey(imageKey)
                 .build(),
             contentDescription = "",
@@ -276,18 +287,52 @@ fun TrashFabColumns(
         }
     }
 }
+@Composable
+fun TrashCardNotice(
+    modifier: Modifier = Modifier
+){
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth().padding(8.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Warning,
+                contentDescription = ""
+            )
+            Text(
+                text = "Items in the trash will be deleted permanently after 30 days",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.Q)
 @Preview
 @Composable
 private fun TrashGridPreview(){
-    val trashUiState = TrashUiState()
-    SharedTransitionLayout {
-        AnimatedVisibility(visible = true) {
+    val fakeItems = listOf(
+        MediaItem(uri = "".toUri(), isVideo = false, dateTaken = 0L, null),
+        MediaItem(uri = "".toUri(), isVideo = false, dateTaken = 0L, null),
+        MediaItem(uri = "".toUri(), isVideo = false, dateTaken = 0L, null)
+    )
+    val trashUiState = TrashUiState(trashedFilesList = fakeItems)
+    Surface(
+
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            TrashCardNotice()
             TrashGrid(
                 trashUiState = trashUiState,
                 onImageClicked = {uri -> },
-                onImageLongClick = { },
-                //index = 0,
+                onImageLongClick = {uri -> },
                 onRefresh = {},
             )
         }

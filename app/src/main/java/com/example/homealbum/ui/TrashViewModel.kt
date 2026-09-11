@@ -1,7 +1,6 @@
 package com.example.homealbum.ui
 
 import android.net.Uri
-import android.util.Log
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

@@ -131,13 +131,15 @@ fun GalleryScreen(
                 Column(
                     horizontalAlignment = Alignment.End
                 ) {
-                    SmallFloatingActionButton(
-                        onClick = onSmallFabClicked
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Trash can"
-                        )
+                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q){
+                        SmallFloatingActionButton(
+                            onClick = onSmallFabClicked
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.outline_recycling_24),
+                                contentDescription = "Trash can"
+                            )
+                        }
                     }
                     SettingsFab(
                         onSettingsFabClicked,
