@@ -53,14 +53,6 @@ class GalleryViewModel(
         started = SharingStarted.Eagerly,
         initialValue = UserSettings("", "", false, false)
     )
-
-    init {
-        observeUpload()
-        viewModelScope.launch {
-            userSettings.first { it.serverIp.isNotBlank() }
-            checkServerConnection()
-        }
-    }
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
@@ -80,22 +72,6 @@ class GalleryViewModel(
             }
 
         }
-    }
-
-    /**
-     * This is just a passthrough function to connect the UI with the repo. Since the repo function
-     * is a suspend, this function needs to be suspended as well
-     */
-    suspend fun getThumbnail(
-        mediaItem: MediaItem,
-        width: Int,
-        height: Int
-    ): Bitmap?{
-        return photosRepo.getThumbnail(
-            uri = mediaItem.uri,
-            width = width,
-            height = height
-        )
     }
 
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
@@ -235,6 +211,13 @@ class GalleryViewModel(
                     state.copy(uploadStatus = status)
                 }
             }
+        }
+    }
+    init {
+        observeUpload()
+        viewModelScope.launch {
+            userSettings.first { it.serverIp.isNotBlank() }
+            checkServerConnection()
         }
     }
     companion object {
