@@ -288,7 +288,7 @@ fun BottomToolbar(
                 )
             }
             BaseTooltip(
-                tooltipText = "Upload to server",
+                tooltipText = stringResource(R.string.upload_file_icon_desc),
                 composable = {
                     IconButton(onClick = onUploadClicked) {
                         Icon(
@@ -299,7 +299,7 @@ fun BottomToolbar(
                 }
             )
             BaseTooltip(
-                tooltipText = "Check if file is in the server",
+                tooltipText = stringResource(R.string.check_if_file_is_in_the_server_icon_desc),
                 composable = {
                     IconButton(onClick = checkPhotoIsUploaded) {
                         Icon(
@@ -318,7 +318,7 @@ fun BottomToolbar(
                     UploadStatus.SCHEDULED -> {
                         Icon(
                             painterResource(R.drawable.outline_schedule_24),
-                            contentDescription = ""//stringResource(R.string.delete_file_icon_desc)
+                            contentDescription = ""
                         )
                     }
                     UploadStatus.IDLE -> {
@@ -341,7 +341,7 @@ fun BottomToolbar(
             ) {
                 Icon(
                     Icons.Default.ArrowBack,
-                    contentDescription = "Back"
+                    contentDescription = stringResource(R.string.back_icon_string)
                 )
             }
         },

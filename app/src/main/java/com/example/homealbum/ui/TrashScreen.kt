@@ -123,12 +123,15 @@ fun TrashScreen(
     ) { innerPadding ->
         with(sharedTransitionScope){
             Column(
-                modifier = modifier.padding(innerPadding).fillMaxSize().sharedBounds(
-                    sharedContentState = rememberSharedContentState(
-                        key = "trash-screen"
-                    ),
-                    animatedVisibilityScope = animatedVisibilityScope
-                )
+                modifier = modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(
+                            key = "trash-screen"
+                        ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
             ) {
                 TrashCardNotice()
                 TrashGrid(
@@ -228,7 +231,8 @@ fun TrashImageThumbnail(
                         )
                         onImageLongClick(mediaItem.uri)
                     }
-                ).padding(selectedPadding),
+                )
+                .padding(selectedPadding),
             contentScale = ContentScale.Crop
         )
         if (mediaItem.isVideo){
@@ -266,14 +270,14 @@ fun TrashFabColumns(
     ) {
         if (trashUiState.multipleSelectionSet.isNotEmpty()){
             BaseTooltip(
-                tooltipText = "Restore file",
+                tooltipText = stringResource(R.string.tooltip_restore_file),
                 composable = {
                     SmallFloatingActionButton(
                         onClick = onRestoreFabClicked
                     ) {
                         Icon(
                             painterResource(R.drawable.rounded_undo_24),
-                            contentDescription = "Restore"
+                            contentDescription = stringResource(R.string.tooltip_restore_file)
                         )
                     }
                 }
@@ -284,7 +288,7 @@ fun TrashFabColumns(
             ) {
                 Icon(
                     Icons.Filled.Clear,
-                    contentDescription = "Clear"
+                    contentDescription = stringResource(R.string.clear_icon_string)
                 )
             }
         } else {
@@ -299,7 +303,7 @@ fun TrashFabColumns(
             ) {
                 Icon(
                     painterResource(R.drawable.baseline_home_filled_24),
-                    contentDescription = "Back"
+                    contentDescription = stringResource(R.string.back_icon_string)
                 )
             }
         }
@@ -310,20 +314,24 @@ fun TrashCardNotice(
     modifier: Modifier = Modifier
 ){
     ElevatedCard(
-        modifier = modifier.fillMaxWidth().padding(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth().padding(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
             Icon(
                 Icons.Filled.Warning,
                 contentDescription = ""
             )
             Text(
-                text = "Items in the trash will be deleted permanently after 30 days",
+                text = stringResource(R.string.trash_screen_banner),
                 style = MaterialTheme.typography.bodyLarge
             )
         }

@@ -41,4 +41,17 @@
     <string name="check_if_file_is_in_the_server_icon_desc">Check if file is in the server</string>
     <string name="allow_upload_using_mobile_data">Allow upload using mobile data?</string>
     <string name="storage_text_free_of">"free of "</string>
+    <string name="tooltip_open_trash_can">Open trash can</string>
+    <string name="trash_can_icon_string">Trash can</string>
+    <string name="settings_fab_string">Settings</string>
+    <string name="tooltip_check_server_connection">Check server connection</string>
+    <string name="delete_icon_string">Delete</string>
+    <string name="share_icon_string">Share</string>
+    <string name="tooltip_upload_to_server">Upload to server</string>
+    <string name="upload_icon_string">Upload</string>
+    <string name="clear_selection_icon_string">Clear selection</string>
+    <string name="back_icon_string">Back</string>
+    <string name="tooltip_restore_file">Restore file</string>
+    <string name="clear_icon_string">Clear</string>
+    <string name="trash_screen_banner">Items in the trash will be deleted permanently after 30 days</string>
 </resources>

@@ -97,10 +97,7 @@ class GalleryViewModel(
     fun removeMediaFromServer(uriSet: Set<Uri>){
         viewModelScope.launch {
             try {
-                //val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-                //if (isFileInServer.isSuccessful){
-                    deleteScheduler.scheduleDelete(uriSet)
-                //}
+                deleteScheduler.scheduleDelete(uriSet)
             } catch (e: IOException){
                 deleteScheduler.scheduleDelete(uriSet)
             }

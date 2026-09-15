@@ -146,20 +146,22 @@ fun GalleryScreen(
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q){
                         with(sharedTransitionScope){
                             BaseTooltip(
-                                tooltipText = "Open trash can",
+                                tooltipText = stringResource(R.string.tooltip_open_trash_can),
                                 composable = {
                                     SmallFloatingActionButton(
                                         onClick = onSmallFabClicked,
-                                        modifier = Modifier.padding(bottom = 4.dp).sharedBounds(
-                                            sharedContentState = rememberSharedContentState(
-                                                key = "trash-screen"
-                                            ),
-                                            animatedVisibilityScope = animatedVisibilityScope
-                                        )
+                                        modifier = Modifier
+                                            .padding(bottom = 4.dp)
+                                            .sharedBounds(
+                                                sharedContentState = rememberSharedContentState(
+                                                    key = "trash-screen"
+                                                ),
+                                                animatedVisibilityScope = animatedVisibilityScope
+                                            )
                                     ) {
                                         Icon(
                                             painterResource(R.drawable.outline_recycling_24),
-                                            contentDescription = "Trash can"
+                                            contentDescription = stringResource(R.string.trash_can_icon_string)
                                         )
                                     }
                                 }
@@ -315,16 +317,18 @@ fun SettingsFab(
     with(sharedTransitionScope){
         FloatingActionButton(
             onClick = onSettingsFabClicked,
-            modifier = modifier.padding(top = 4.dp).sharedBounds(
-                sharedContentState = rememberSharedContentState(
-                    key = "settings-screen"
-                ),
-                animatedVisibilityScope = animatedVisibilityScope
-            )
+            modifier = modifier
+                .padding(top = 4.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(
+                        key = "settings-screen"
+                    ),
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = ""
+                contentDescription = stringResource(R.string.settings_fab_string)
             )
         }
     }
@@ -361,7 +365,7 @@ private fun GalleryTopBar(
                 )
             } else {
                 BaseTooltip(
-                    tooltipText = "Check server connection",
+                    tooltipText = stringResource(R.string.tooltip_check_server_connection),
                     composable = {
                         IconButton(
                             onClick = onServerCheckClick
@@ -461,7 +465,8 @@ fun ImageThumbnail(
                             )
                             onImageLongClick(mediaItem.uri)
                         }
-                    ).padding(selectedPadding)
+                    )
+                    .padding(selectedPadding)
                     .sharedElement(
                         sharedContentState = rememberSharedContentState(
                             key = "media-$index"
@@ -507,7 +512,7 @@ fun FabButtonsColumn(
         ) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Delete"
+                contentDescription = stringResource(R.string.delete_icon_string)
             )
         }
         SmallFloatingActionButton(
@@ -515,18 +520,18 @@ fun FabButtonsColumn(
         ) {
             Icon(
                 Icons.Filled.Share,
-                contentDescription = "Share"
+                contentDescription = stringResource(R.string.share_icon_string)
             )
         }
         BaseTooltip(
-            tooltipText = "Upload to server",
+            tooltipText = stringResource(R.string.tooltip_upload_to_server),
             composable = {
                 SmallFloatingActionButton(
                     onClick = onUploadClicked
                 ) {
                     Icon(
                         painterResource(R.drawable.outline_cloud_upload_24),
-                        contentDescription = "Upload"
+                        contentDescription = stringResource(R.string.upload_icon_string)
                     )
                 }
             }
@@ -538,7 +543,7 @@ fun FabButtonsColumn(
         ) {
             Icon(
                 imageVector = Icons.Default.Clear,
-                contentDescription = "Clear selection"
+                contentDescription = stringResource(R.string.clear_selection_icon_string)
             )
         }
     }
