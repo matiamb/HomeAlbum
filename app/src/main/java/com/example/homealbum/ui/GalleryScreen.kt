@@ -258,59 +258,51 @@ private fun GalleryGrid(
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
-
-    with(sharedTransitionScope){
-        PullToRefreshBox(
-            isRefreshing = galleryUiState.isRefreshing,
-            onRefresh = onRefresh,
-            modifier = modifier.fillMaxSize()
+    PullToRefreshBox(
+        isRefreshing = galleryUiState.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                galleryUiState.galleryItems.forEach { item ->
-                    when(item){
-                        is GalleryItem.DateHeader -> {
-                            item(key = "header-${item.date}",
-                                span = { GridItemSpan(maxLineSpan)
-                                }
-                            ){
-                                Text(
-                                    text = item.date.format(
-                                        DateTimeFormatter.ofPattern("dd MMMM yyyy")
-                                    ),
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
+            galleryUiState.galleryItems.forEach { item ->
+                when(item){
+                    is GalleryItem.DateHeader -> {
+                        item(key = "header-${item.date}",
+                            span = { GridItemSpan(maxLineSpan)
                             }
+                        ){
+                            Text(
+                                text = item.date.format(
+                                    DateTimeFormatter.ofPattern("dd MMMM yyyy")
+                                ),
+                                style = MaterialTheme.typography.headlineSmall
+                            )
                         }
-                        is GalleryItem.Photo -> {
-                            item(key = item.mediaItem.uri){
-                                ImageThumbnail(
-                                    mediaItem = item.mediaItem,
-                                    galleryUiState = galleryUiState,
-                                    index = item.originalIndex,
-                                    onImageClicked = onImageClicked,
-                                    onImageLongClick = onImageLongClick,
-                                    modifier = Modifier.sharedElement(
-                                        sharedContentState = rememberSharedContentState(
-                                            key = "media-${item.originalIndex}"
-                                        ),
-                                        animatedVisibilityScope = animatedVisibilityScope
-                                    )
-                                )
-                            }
+                    }
+                    is GalleryItem.Photo -> {
+                        item(key = item.mediaItem.uri){
+                            ImageThumbnail(
+                                mediaItem = item.mediaItem,
+                                galleryUiState = galleryUiState,
+                                index = item.originalIndex,
+                                onImageClicked = onImageClicked,
+                                onImageLongClick = onImageLongClick,
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = animatedVisibilityScope
+                            )
                         }
                     }
                 }
             }
         }
     }
-
 }
 
 @Composable
@@ -426,6 +418,8 @@ fun ImageThumbnail(
     index: Int,
     onImageClicked: (Int, Uri) -> Unit,
     onImageLongClick: (Uri) -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier
 ){
     val thumbnail = if (mediaItem.isVideo){
@@ -447,42 +441,50 @@ fun ImageThumbnail(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.animateContentSize()
-    ){
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(thumbnail)
-                .size(300, 300)
-                .memoryCacheKey(imageKey)
-                .build(),
-            contentDescription = "",
-            modifier = Modifier
-                .height(150.dp)
-                .combinedClickable(
-                    enabled = true,
-                    onClick = { onImageClicked(index, mediaItem.uri) },
-                    onLongClick = {
-                        haptic.performHapticFeedback(
-                            hapticFeedbackType = HapticFeedbackType.LongPress
-                        )
-                        onImageLongClick(mediaItem.uri)
-                    }
-                ).padding(selectedPadding),
-            contentScale = ContentScale.Crop
-        )
-        if (mediaItem.isVideo){
-            Icon(
-                Icons.Filled.PlayArrow,
-                contentDescription = ""
+    ) {
+        with(sharedTransitionScope) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(thumbnail)
+                    .size(300, 300)
+                    .memoryCacheKey(imageKey)
+                    .build(),
+                contentDescription = "",
+                modifier = Modifier
+                    .height(150.dp)
+                    .combinedClickable(
+                        enabled = true,
+                        onClick = { onImageClicked(index, mediaItem.uri) },
+                        onLongClick = {
+                            haptic.performHapticFeedback(
+                                hapticFeedbackType = HapticFeedbackType.LongPress
+                            )
+                            onImageLongClick(mediaItem.uri)
+                        }
+                    ).padding(selectedPadding)
+                    .sharedElement(
+                        sharedContentState = rememberSharedContentState(
+                            key = "media-$index"
+                        ),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    ),
+                contentScale = ContentScale.Crop
             )
-        }
-        if (galleryUiState.multipleSelectionSet.isNotEmpty()){
-            if (galleryUiState.multipleSelectionSet.contains(mediaItem.uri)){
+            if (mediaItem.isVideo) {
                 Icon(
-                    painterResource(R.drawable.baseline_check_circle_24),
-                    contentDescription = "",
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    tint = MaterialTheme.colorScheme.primary
+                    Icons.Filled.PlayArrow,
+                    contentDescription = ""
                 )
+            }
+            if (galleryUiState.multipleSelectionSet.isNotEmpty()) {
+                if (galleryUiState.multipleSelectionSet.contains(mediaItem.uri)) {
+                    Icon(
+                        painterResource(R.drawable.baseline_check_circle_24),
+                        contentDescription = "",
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
