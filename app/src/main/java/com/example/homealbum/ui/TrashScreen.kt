@@ -68,6 +68,7 @@ import com.example.homealbum.R
 import com.example.homealbum.model.MediaItem
 import androidx.core.net.toUri
 import coil.compose.AsyncImagePainter
+import com.example.homealbum.ui.components.BaseTooltip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -264,14 +265,19 @@ fun TrashFabColumns(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (trashUiState.multipleSelectionSet.isNotEmpty()){
-            SmallFloatingActionButton(
-                onClick = onRestoreFabClicked
-            ) {
-                Icon(
-                    painterResource(R.drawable.rounded_undo_24),
-                    contentDescription = "Restore"
-                )
-            }
+            BaseTooltip(
+                tooltipText = "Restore file",
+                composable = {
+                    SmallFloatingActionButton(
+                        onClick = onRestoreFabClicked
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.rounded_undo_24),
+                            contentDescription = "Restore"
+                        )
+                    }
+                }
+            )
             FloatingActionButton(
                 onClick = onClearFabClicked,
                 modifier = Modifier.padding(top = 4.dp)

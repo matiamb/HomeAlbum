@@ -68,6 +68,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.homealbum.R
 import com.example.homealbum.model.UploadStatus
+import com.example.homealbum.ui.components.BaseTooltip
 
 @Composable
 fun ImageScreen(
@@ -286,18 +287,29 @@ fun BottomToolbar(
                     contentDescription = stringResource(R.string.share_file_icon_desc)
                 )
             }
-            IconButton(onClick = onUploadClicked) {
-                Icon(
-                    painterResource(R.drawable.outline_cloud_upload_24),
-                    contentDescription = stringResource(R.string.upload_file_icon_desc)
-                )
-            }
-            IconButton(onClick = checkPhotoIsUploaded) {
-                Icon(
-                    painterResource(R.drawable.outline_cloud_alert_24),
-                    stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
-                )
-            }
+            BaseTooltip(
+                tooltipText = "Upload to server",
+                composable = {
+                    IconButton(onClick = onUploadClicked) {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_upload_24),
+                            contentDescription = stringResource(R.string.upload_file_icon_desc)
+                        )
+                    }
+                }
+            )
+            BaseTooltip(
+                tooltipText = "Check if file is in the server",
+                composable = {
+                    IconButton(onClick = checkPhotoIsUploaded) {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_alert_24),
+                            stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
+                        )
+                    }
+                }
+            )
+
             IconButton(onClick = {}, enabled = false) {
                 when (uiState.uploadStatus) {
                     UploadStatus.UPLOADING -> {
