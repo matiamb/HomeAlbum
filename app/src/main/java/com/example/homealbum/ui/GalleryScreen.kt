@@ -188,13 +188,12 @@ fun GalleryScreen(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
         ){ permissionMap ->
             hasPermission = permissionMap.values.all { isGranted -> isGranted }
+            galleryViewModel.loadPhotos()
         }
 
         LaunchedEffect(hasPermission) {
             if (!hasPermission){
                 permissionLauncher.launch(permissionToRequest)
-            } else {
-                galleryViewModel.loadPhotos()
             }
         }
 
