@@ -42,12 +42,16 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,6 +81,7 @@ import coil.request.ImageRequest
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.MediaItem
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.ui.components.BaseTooltip
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +113,13 @@ fun GalleryScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {GalleryTopBar(scrollBehavior, galleryUiState.value, onServerCheckClick = {galleryViewModel.checkServerConnection()})},
+        topBar = {
+            GalleryTopBar(
+                scrollBehavior,
+                galleryUiState.value,
+                onServerCheckClick = {galleryViewModel.checkServerConnection()}
+            )
+                 },
         floatingActionButton = {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty()){
                 FabButtonsColumn(
@@ -134,20 +145,25 @@ fun GalleryScreen(
                 ) {
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q){
                         with(sharedTransitionScope){
-                            SmallFloatingActionButton(
-                                onClick = onSmallFabClicked,
-                                modifier = Modifier.padding(bottom = 4.dp).sharedBounds(
-                                    sharedContentState = rememberSharedContentState(
-                                        key = "trash-screen"
-                                    ),
-                                    animatedVisibilityScope = animatedVisibilityScope
-                                )
-                            ) {
-                                Icon(
-                                    painterResource(R.drawable.outline_recycling_24),
-                                    contentDescription = "Trash can"
-                                )
-                            }
+                            BaseTooltip(
+                                tooltipText = "Open trash can",
+                                composable = {
+                                    SmallFloatingActionButton(
+                                        onClick = onSmallFabClicked,
+                                        modifier = Modifier.padding(bottom = 4.dp).sharedBounds(
+                                            sharedContentState = rememberSharedContentState(
+                                                key = "trash-screen"
+                                            ),
+                                            animatedVisibilityScope = animatedVisibilityScope
+                                        )
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.outline_recycling_24),
+                                            contentDescription = "Trash can"
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
                     SettingsFab(
@@ -352,29 +368,34 @@ private fun GalleryTopBar(
                     fontWeight = FontWeight.Bold
                 )
             } else {
-                IconButton(
-                    onClick = onServerCheckClick
-                ) {
-                    when(uiState.serverConnectionStatus){
-                        ServerConnectionStatus.CHECKING -> {
-                            CircularProgressIndicator()
-                        }
-                        ServerConnectionStatus.CONNECTED -> {
-                            Icon(
-                                painterResource(R.drawable.outline_computer_24),
-                                contentDescription = "",
-                                tint = Color(0xff2eef68)
-                            )
-                        }
-                        ServerConnectionStatus.FAILED -> {
-                            Icon(
-                                painterResource(R.drawable.outline_mimo_disconnect_24),
-                                contentDescription = "",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                BaseTooltip(
+                    tooltipText = "Check server connection",
+                    composable = {
+                        IconButton(
+                            onClick = onServerCheckClick
+                        ) {
+                            when(uiState.serverConnectionStatus){
+                                ServerConnectionStatus.CHECKING -> {
+                                    CircularProgressIndicator()
+                                }
+                                ServerConnectionStatus.CONNECTED -> {
+                                    Icon(
+                                        painterResource(R.drawable.outline_computer_24),
+                                        contentDescription = "",
+                                        tint = Color(0xff2eef68)
+                                    )
+                                }
+                                ServerConnectionStatus.FAILED -> {
+                                    Icon(
+                                        painterResource(R.drawable.outline_mimo_disconnect_24),
+                                        contentDescription = "",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
                     }
-                }
+                )
             }
         },
         scrollBehavior = scrollBehavior,
@@ -495,14 +516,20 @@ fun FabButtonsColumn(
                 contentDescription = "Share"
             )
         }
-        SmallFloatingActionButton(
-            onClick = onUploadClicked
-        ) {
-            Icon(
-                painterResource(R.drawable.outline_cloud_upload_24),
-                contentDescription = "Upload"
-            )
-        }
+        BaseTooltip(
+            tooltipText = "Upload to server",
+            composable = {
+                SmallFloatingActionButton(
+                    onClick = onUploadClicked
+                ) {
+                    Icon(
+                        painterResource(R.drawable.outline_cloud_upload_24),
+                        contentDescription = "Upload"
+                    )
+                }
+            }
+        )
+
         FloatingActionButton(
             onClick = onClearSelectionClicked,
             modifier = Modifier.padding(top = 4.dp)
