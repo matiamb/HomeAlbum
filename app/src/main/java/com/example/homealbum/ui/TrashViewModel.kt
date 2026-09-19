@@ -23,15 +23,21 @@ class TrashViewModel(
     val trashUiState: StateFlow<TrashUiState> = _trashUiState.asStateFlow()
     fun loadTrashedFiles(){
         viewModelScope.launch {
-            _trashUiState.update {
-                it.copy(isRefreshing = true)
-            }
-            val trashedFilesList = photoRepository.getTrashedFiles()
-            _trashUiState.update {
-                it.copy(trashedFilesList = trashedFilesList)
-            }
-            _trashUiState.update {
-                it.copy(isRefreshing = false)
+            try {
+                _trashUiState.update {
+                    it.copy(isRefreshing = true)
+                }
+                val trashedFilesList = photoRepository.getTrashedFiles()
+                _trashUiState.update {
+                    it.copy(trashedFilesList = trashedFilesList)
+                }
+                _trashUiState.update {
+                    it.copy(isRefreshing = false)
+                }
+            } catch (e: SecurityException){
+                _trashUiState.update {
+                    it.copy(isRefreshing = false)
+                }
             }
         }
     }
@@ -53,9 +59,13 @@ class TrashViewModel(
     }
     fun restoreFiles(onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
-            val intentSenderRequest = photoRepository.restoreFiles(trashUiState.value.multipleSelectionSet)
-            if (intentSenderRequest != null){
-                onIntentReady(intentSenderRequest)
+            try {
+                val intentSenderRequest = photoRepository.restoreFiles(trashUiState.value.multipleSelectionSet)
+                if (intentSenderRequest != null){
+                    onIntentReady(intentSenderRequest)
+                }
+            } catch (e: SecurityException){
+
             }
         }
     }
