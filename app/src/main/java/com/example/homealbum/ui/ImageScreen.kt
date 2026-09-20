@@ -98,9 +98,11 @@ fun ImageScreen(
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
                 onLastPhotoDeleted()
+                galleryViewModel.loadPhotos()
             } else {
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
+                galleryViewModel.loadPhotos()
             }
         }
     }

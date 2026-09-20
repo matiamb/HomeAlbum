@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -214,7 +215,11 @@ fun GalleryScreen(
                 permissionLauncher.launch(permissionToRequest)
             }
         }
-
+        LaunchedEffect(Unit) {
+            galleryViewModel.toastMessage.collect { message ->
+                Toast.makeText(context, message.message, Toast.LENGTH_LONG).show()
+            }
+        }
         if(hasPermission){
             GalleryGrid(
                 galleryUiState = galleryUiState.value,
