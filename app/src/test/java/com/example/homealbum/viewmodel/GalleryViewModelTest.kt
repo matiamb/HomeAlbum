@@ -1,6 +1,7 @@
 package com.example.homealbum.viewmodel
 
 import android.net.Uri
+import androidx.activity.result.IntentSenderRequest
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.model.ServerConnectionStatus
@@ -284,6 +285,43 @@ class GalleryViewModelTest {
             galleryViewModelTest.startMultipleUpload()
             advanceUntilIdle()
             assertTrue(fakeUploadScheduler.scheduledUriSet.isEmpty())
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun requestTrashPhoto_repoReceivesFilesAndCallbackReceivesIntent(){
+        runTest {
+            fakePhotoRepository.failToDelete = false
+            val expectedRequest = mockk<IntentSenderRequest>()
+            fakePhotoRepository.deleteResult = expectedRequest
+            var receivedRequest: IntentSenderRequest? = null
+            val setToDelete = setOf(
+                fakePhotoRepository.media1.uri,
+                fakePhotoRepository.media2.uri
+            )
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.requestTrashPhoto { request ->
+                receivedRequest = request
+            }
+            advanceUntilIdle()
+            assertEquals(expectedRequest, receivedRequest)
+            assertEquals(setToDelete, fakePhotoRepository.deletedUris)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeTrashedPhotoFromUi_updatesUiStateCorrectly(){
+        runTest {
+            galleryViewModelTest.loadPhotos()
+            val setToDelete = setOf(
+                fakePhotoRepository.media1.uri,
+                fakePhotoRepository.media2.uri
+            )
+            advanceUntilIdle()
+            galleryViewModelTest.removeThrashedPhotoFromUi(setToDelete)
+            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
+            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
         }
     }
 }

@@ -15,6 +15,10 @@ class FakePhotoRepository() : PhotoRepository{
     var restoreResult: IntentSenderRequest? = null
     var failRestore = false
     var restoredUris: Set<Uri> = emptySet()
+    var deleteResult: IntentSenderRequest? = null
+    var failToDelete = false
+    var deletedUris: Set<Uri> = emptySet()
+
     override suspend fun getLocalPhotos(): List<MediaItem> {
         if (failToLoad){
             throw SecurityException()
@@ -28,7 +32,12 @@ class FakePhotoRepository() : PhotoRepository{
     }
 
     override suspend fun prepareToTrashPhoto(uriSet: Set<Uri>): IntentSenderRequest? {
-        TODO("Not yet implemented")
+        deletedUris = uriSet
+        if (failToDelete){
+            throw SecurityException()
+        } else {
+            return deleteResult
+        }
     }
 
     override suspend fun getThumbnail(

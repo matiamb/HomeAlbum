@@ -68,4 +68,29 @@ class TrashViewModelTest {
             assertEquals(setToRestore, fakePhotoRepository.restoredUris)
         }
     }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun enableMultipleSelection_updatesUiStateSetCorrectly(){
+        runTest {
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media1.uri)
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media2.uri)
+            val expectedSet = setOf(
+                fakePhotoRepository.media1.uri,
+                fakePhotoRepository.media2.uri
+            )
+            assertEquals(expectedSet, trashViewModelTest.trashUiState.value.multipleSelectionSet)
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media1.uri)
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media2.uri)
+            assertTrue(trashViewModelTest.trashUiState.value.multipleSelectionSet.isEmpty())
+        }
+    }
+    @Test
+    fun clearMultipleSelection_clearsUiStateCorrectly(){
+        runTest {
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media1.uri)
+            trashViewModelTest.enableMultipleSelection(fakePhotoRepository.media2.uri)
+            trashViewModelTest.clearMultipleSelection()
+            assertTrue(trashViewModelTest.trashUiState.value.multipleSelectionSet.isEmpty())
+        }
+    }
 }
