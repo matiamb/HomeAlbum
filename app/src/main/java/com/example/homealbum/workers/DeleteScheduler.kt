@@ -8,13 +8,13 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 
 interface DeleteScheduler{
-    fun scheduleDelete(uri: Uri)
+    fun scheduleDelete(uriSet: Set<Uri>)
 }
 
 class WorkManagerDeleteScheduler(
     private val workManager: WorkManager
 ) : DeleteScheduler{
-    override fun scheduleDelete(uri: Uri) {
+    override fun scheduleDelete(uriSet: Set<Uri>) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -22,10 +22,9 @@ class WorkManagerDeleteScheduler(
             .addTag("delete")
             .setConstraints(constraints)
             .setInputData(
-                workDataOf(DeleteWorker.KEY_URI to uri.toString())
+                workDataOf(DeleteWorker.KEY_URI to uriSet.map { it.toString() }.toTypedArray())
             )
             .build()
         workManager.enqueue(request)
     }
-
 }

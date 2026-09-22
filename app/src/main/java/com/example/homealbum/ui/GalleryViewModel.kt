@@ -53,14 +53,6 @@ class GalleryViewModel(
         started = SharingStarted.Eagerly,
         initialValue = UserSettings("", "", false, false)
     )
-
-    init {
-        observeUpload()
-        viewModelScope.launch {
-            userSettings.first { it.serverIp.isNotBlank() }
-            checkServerConnection()
-        }
-    }
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
@@ -82,47 +74,40 @@ class GalleryViewModel(
         }
     }
 
-    /**
-     * This is just a passthrough function to connect the UI with the repo. Since the repo function
-     * is a suspend, this function needs to be suspended as well
-     */
-    suspend fun getThumbnail(
-        mediaItem: MediaItem,
-        width: Int,
-        height: Int
-    ): Bitmap?{
-        return photosRepo.getThumbnail(
-            uri = mediaItem.uri,
-            width = width,
-            height = height
-        )
-    }
-
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
-            val intentSenderRequest = photosRepo.prepareToTrashPhoto(uri)
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(setOf(uri))
             if (intentSenderRequest != null) {
                 onIntentReady(intentSenderRequest)
             } else {
-                removeThrashedPhotoFromUi(uri)
+                removeThrashedPhotoFromUi(setOf(uri))
             }
         }
     }
-    fun removeMediaFromServer(uri: Uri){
+    fun requestTrashPhoto(onIntentReady: (IntentSenderRequest) -> Unit){
+        viewModelScope.launch {
+            val intentSenderRequest = photosRepo.prepareToTrashPhoto(galleryUiState.value.multipleSelectionSet)
+            if (intentSenderRequest != null) {
+                onIntentReady(intentSenderRequest)
+            } else {
+                removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
+            }
+        }
+    }
+    fun removeMediaFromServer(uriSet: Set<Uri>){
         viewModelScope.launch {
             try {
-                val isFileInServer = networkPhotoRepository.checkIfPhotoExist(uri)
-                if (isFileInServer.isSuccessful){
-                    deleteScheduler.scheduleDelete(uri)
-                }
+                deleteScheduler.scheduleDelete(uriSet)
             } catch (e: IOException){
-                deleteScheduler.scheduleDelete(uri)
+                deleteScheduler.scheduleDelete(uriSet)
             }
         }
     }
-    fun removeThrashedPhotoFromUi(uri: Uri){
-        _galleryUiState.update { state ->
-            state.copy(photoList = state.photoList.filter { it.uri != uri })
+    fun removeThrashedPhotoFromUi(uriSet: Set<Uri>){
+        for (uri in uriSet){
+            _galleryUiState.update { state ->
+                state.copy(photoList = state.photoList.filter { it.uri != uri })
+            }
         }
     }
     fun uploadPhoto(
@@ -185,6 +170,37 @@ class GalleryViewModel(
 
         }
     }
+    fun multipleSelection(uri: Uri){
+        if (galleryUiState.value.multipleSelectionSet.contains(uri)){
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet - uri)
+            }
+        } else {
+            _galleryUiState.update {
+                it.copy(multipleSelectionSet = it.multipleSelectionSet + uri)
+            }
+        }
+    }
+    fun clearMultipleSelectionSet(){
+        _galleryUiState.update {
+            it.copy(multipleSelectionSet = emptySet())
+        }
+    }
+    fun startMultipleUpload(){
+        viewModelScope.launch {
+            if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
+                uploadScheduler.scheduleMultipleUpload(
+                    uriList = galleryUiState.value.multipleSelectionSet,
+                    allowUploadMobileData = userSettings.value.allowUploadMobileData
+                )
+                clearMultipleSelectionSet()
+            } else {
+                _toastMessage.emit(
+                    ToastText(message = R.string.local_backup_is_disabled_msg)
+                )
+            }
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
             uploadScheduler.uploadStatus.collect { status ->
@@ -193,6 +209,14 @@ class GalleryViewModel(
                 }
             }
         }
+    }
+    init {
+        observeUpload()
+        viewModelScope.launch {
+            userSettings.first { it.serverIp.isNotBlank() }
+            checkServerConnection()
+        }
+        loadPhotos()
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

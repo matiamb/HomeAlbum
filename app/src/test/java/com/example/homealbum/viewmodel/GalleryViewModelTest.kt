@@ -1,15 +1,13 @@
 package com.example.homealbum.viewmodel
 
-import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
-import com.example.homealbum.data.PhotoRepository
-import com.example.homealbum.model.MediaItem
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
+import com.example.homealbum.utils.FakePhotoRepository
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import io.mockk.mockk
@@ -25,41 +23,11 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import retrofit2.Response
-
-class FakePhotoRepository() : PhotoRepository{
-    var failToLoad = false
-    val media1 = MediaItem( uri = mockk<Uri>(), false, dateTaken = 1L)
-    val media2 = MediaItem(uri = mockk<Uri>(), isVideo = false, dateTaken = 2L)
-    val media3 = MediaItem(uri = mockk<Uri>(), isVideo = false, dateTaken = 3L)
-    override suspend fun getLocalPhotos(): List<MediaItem> {
-        if (failToLoad){
-            throw SecurityException()
-        } else {
-            return listOf(
-                media1,
-                media2,
-                media3
-            )
-        }
-    }
-
-    override suspend fun prepareToTrashPhoto(uri: Uri): IntentSenderRequest? {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun getThumbnail(
-        uri: Uri,
-        width: Int,
-        height: Int
-    ): Bitmap? {
-        TODO("Not yet implemented")
-    }
-
-}
 class FakeNetworkRepository() : ImageScreenRepository{
     var photoExists = false
     var throwException = false
@@ -75,27 +43,34 @@ class FakeNetworkRepository() : ImageScreenRepository{
                 throw IOException()
             }
         }
-//        if (photoExists && !throwException){
-//            return Response.success("OK".toResponseBody())
-//        } else {
-//            return Response.error<ResponseBody>(404, "Not found".toResponseBody())
-//        }
     }
 
     override suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody> {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteMediaFile(fileUri: Uri): Response<ResponseBody> {
+    override suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody> {
         TODO("Not yet implemented")
     }
 
 }
 class FakeUploadScheduler() : UploadScheduler {
     var scheduledUri: Uri? = null
+    var scheduledUriSet: Set<Uri> = emptySet()
     var fakeAllowUploadMobilData = false
     override fun scheduleUpload(uri: Uri, allowUploadMobileData: Boolean) {
         scheduledUri = uri
+    }
+
+    override fun scheduleMultipleUpload(
+        uriList: Set<Uri>,
+        allowUploadMobileData: Boolean
+    ) {
+        scheduledUriSet = uriList
     }
 
     override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.IDLE)
@@ -103,9 +78,10 @@ class FakeUploadScheduler() : UploadScheduler {
 }
 
 class FakeDeleteScheduler : DeleteScheduler{
-    var scheduledUri: Uri? = null
-    override fun scheduleDelete(uri: Uri) {
-        scheduledUri = uri
+    var scheduledUri: Set<Uri> = emptySet()
+
+    override fun scheduleDelete(uriSet: Set<Uri>) {
+        scheduledUri = uriSet
     }
 }
 
@@ -208,7 +184,7 @@ class GalleryViewModelTest {
             fakePhotoRepository.failToLoad = false
             galleryViewModelTest.loadPhotos()
             advanceUntilIdle()
-            galleryViewModelTest.removeThrashedPhotoFromUi(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.removeThrashedPhotoFromUi(setOf(fakePhotoRepository.media1.uri))
             val photoListTest = galleryViewModelTest.galleryUiState.first()
             assertFalse(photoListTest.photoList.contains(fakePhotoRepository.media1))
             assertEquals(false, photoListTest.isRefreshing)
@@ -242,35 +218,13 @@ class GalleryViewModelTest {
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun removeMediaFromServer_mediaFileInServer_deleteSchedulerCalled(){
-        runTest {
-            val uri = mockk<Uri>()
-            fakeNetworkRepository.photoExists = true
-            galleryViewModelTest.removeMediaFromServer(uri)
-            advanceUntilIdle()
-            assertEquals(uri, fakeDeleteScheduler.scheduledUri)
-        }
-    }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun removeMediaFromServer_mediaFileNotInServer_deleteSchedulerNotCalled(){
-        runTest {
-            val uri = mockk<Uri>()
-            fakeNetworkRepository.photoExists = false
-            galleryViewModelTest.removeMediaFromServer(uri)
-            advanceUntilIdle()
-            assertFalse(uri == fakeDeleteScheduler.scheduledUri)
-        }
-    }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
     fun removeMediaFromServer_serverNotReachable_deleteSchedulerCalled(){
         runTest {
             val uri = mockk<Uri>()
             fakeNetworkRepository.throwException = true
-            galleryViewModelTest.removeMediaFromServer(uri)
+            galleryViewModelTest.removeMediaFromServer(setOf(uri))
             advanceUntilIdle()
-            assertEquals(uri, fakeDeleteScheduler.scheduledUri)
+            assertEquals(setOf(uri), fakeDeleteScheduler.scheduledUri)
         }
     }
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -297,6 +251,77 @@ class GalleryViewModelTest {
             advanceUntilIdle()
             val galleryUiState = galleryViewModelTest.galleryUiState.value
             assertEquals(ServerConnectionStatus.FAILED, galleryUiState.serverConnectionStatus)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun startMultipleUpload_backupEnabledAndMultipleSelectionSet_uploadSchedulerCalled(){
+        runTest {
+            fakeSettingsRepository.saveBackupEnabled(true)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media3.uri)
+            assertTrue(galleryViewModelTest.galleryUiState.value.multipleSelectionSet.isNotEmpty())
+            galleryViewModelTest.startMultipleUpload()
+            advanceUntilIdle()
+            assertEquals(
+                setOf(
+                    fakePhotoRepository.media1.uri,
+                    fakePhotoRepository.media2.uri,
+                    fakePhotoRepository.media3.uri),
+                fakeUploadScheduler.scheduledUriSet
+            )
+            assertTrue(galleryViewModelTest.galleryUiState.value.multipleSelectionSet.isEmpty())
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun startMultipleUpload_backupDisabled_uploadSchedulerNotCalled(){
+        runTest {
+            fakeSettingsRepository.saveBackupEnabled(false)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media3.uri)
+            galleryViewModelTest.startMultipleUpload()
+            advanceUntilIdle()
+            assertTrue(fakeUploadScheduler.scheduledUriSet.isEmpty())
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun requestTrashPhoto_repoReceivesFilesAndCallbackReceivesIntent(){
+        runTest {
+            fakePhotoRepository.failToDelete = false
+            val expectedRequest = mockk<IntentSenderRequest>()
+            fakePhotoRepository.deleteResult = expectedRequest
+            var receivedRequest: IntentSenderRequest? = null
+            val setToDelete = setOf(
+                fakePhotoRepository.media1.uri,
+                fakePhotoRepository.media2.uri
+            )
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.requestTrashPhoto { request ->
+                receivedRequest = request
+            }
+            advanceUntilIdle()
+            assertEquals(expectedRequest, receivedRequest)
+            assertEquals(setToDelete, fakePhotoRepository.deletedUris)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun removeTrashedPhotoFromUi_updatesUiStateCorrectly(){
+        runTest {
+            galleryViewModelTest.loadPhotos()
+            val setToDelete = setOf(
+                fakePhotoRepository.media1.uri,
+                fakePhotoRepository.media2.uri
+            )
+            advanceUntilIdle()
+            galleryViewModelTest.removeThrashedPhotoFromUi(setToDelete)
+            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
+            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
         }
     }
 }

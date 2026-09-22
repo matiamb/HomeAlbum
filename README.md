@@ -69,7 +69,6 @@ or when using Tailscale:
 HomeAlbum is currently a beta project.
 Known limitations include:
 
-- Only one media file can currently be uploaded manually at a time
 - Media file server existence checks are currently performed one file at a time
 - Pending uploads may not always resume correctly after losing network connectivity
 
@@ -110,6 +109,6 @@ Please remove personal or sensitive information before attaching logs or screens
 
 HomeAlbum is currently under active development.
 
-Current release: v0.2.0-beta.1
+Current release: v0.3.0-beta.1
 
 The API and application behavior may change while the project remains in beta.

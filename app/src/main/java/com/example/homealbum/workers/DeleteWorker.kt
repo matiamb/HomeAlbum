@@ -1,6 +1,7 @@
 package com.example.homealbum.workers
 
 import android.content.Context
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.datastore.core.IOException
 import androidx.work.CoroutineWorker
@@ -13,10 +14,13 @@ class DeleteWorker(val context: Context, workerParams: WorkerParameters) : Corou
     }
     private val imageScreenRepo = (context as HomeAlbumApplication).container.networkPhotoRepository
     override suspend fun doWork(): Result {
-        val uriString = inputData.getString(KEY_URI) ?: return Result.failure()
-        val uri = uriString.toUri()
+        val uriStrings = inputData.getStringArray(KEY_URI) ?: return Result.failure()
+        val uriList = mutableListOf<Uri>()
+        for (uri in uriStrings){
+            uriList.add(uri.toUri())
+        }
         try {
-            val serverResponse = imageScreenRepo.deleteMediaFile(uri)
+            val serverResponse = imageScreenRepo.deleteMediaFile(uriList)
             return when{
                 serverResponse.isSuccessful -> {
                     Result.success()
