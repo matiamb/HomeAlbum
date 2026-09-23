@@ -2,6 +2,8 @@ package com.example.homealbum.data
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
 import com.example.homealbum.workers.DeleteScheduler
@@ -15,9 +17,11 @@ interface AppContainer {
     val offlinePhotoRepository: PhotoRepository
     val offlineSettingsRepository: SettingsRepository
     val networkPhotoRepository: ImageScreenRepository
+    val uploadQueueRepository: UploadQueueRepository
     val workManager: WorkManager
     val uploadScheduler: UploadScheduler
     val deleteScheduler: DeleteScheduler
+    val mediaItemDatabase: MediaItemDatabase
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
@@ -47,6 +51,11 @@ class DefaultAppContainer(context: Context) : AppContainer{
             context = context
         )
     }
+    override val uploadQueueRepository: UploadQueueRepository by lazy {
+        LocalUploadQueueRepository(
+            mediaItemDao = mediaItemDatabase.mediaItemDao()
+        )
+    }
     override val workManager: WorkManager by lazy{
         WorkManager.getInstance(context)
     }
@@ -55,5 +64,10 @@ class DefaultAppContainer(context: Context) : AppContainer{
     }
     override val deleteScheduler: DeleteScheduler by lazy {
         WorkManagerDeleteScheduler(workManager = workManager)
+    }
+    override val mediaItemDatabase: MediaItemDatabase by lazy{
+        Room.databaseBuilder<MediaItemDatabase>(context, "media_item_database")
+            .setDriver(AndroidSQLiteDriver())
+            .build()
     }
 }

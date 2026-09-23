@@ -97,11 +97,13 @@ fun ImageScreen(
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
+                galleryViewModel.deleteMediaFileFromDb(setOf(currentUri))
                 onLastPhotoDeleted()
                 galleryViewModel.loadPhotos()
             } else {
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
+                galleryViewModel.deleteMediaFileFromDb(setOf(currentUri))
                 galleryViewModel.loadPhotos()
             }
         }
@@ -317,13 +319,19 @@ fun BottomToolbar(
                     UploadStatus.UPLOADING -> {
                         CircularProgressIndicator(modifier = Modifier.width(32.dp))
                     }
-                    UploadStatus.SCHEDULED -> {
+                    UploadStatus.PENDING -> {
                         Icon(
                             painterResource(R.drawable.outline_schedule_24),
                             contentDescription = ""
                         )
                     }
                     UploadStatus.IDLE -> {
+
+                    }
+                    UploadStatus.FAILED -> {
+
+                    }
+                    UploadStatus.UPLOADED -> {
 
                     }
                 }

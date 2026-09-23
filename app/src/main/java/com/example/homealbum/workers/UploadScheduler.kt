@@ -38,7 +38,7 @@ class WorkManagerUploadScheduler(
                 workInfos.any {
                     it.state == WorkInfo.State.ENQUEUED ||
                             it.state == WorkInfo.State.BLOCKED
-                } -> UploadStatus.SCHEDULED
+                } -> UploadStatus.PENDING
                 else -> UploadStatus.IDLE
             }
         }

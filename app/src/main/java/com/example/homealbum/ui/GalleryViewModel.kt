@@ -21,6 +21,7 @@ import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
@@ -39,6 +40,7 @@ class GalleryViewModel(
     private val photosRepo: PhotoRepository,
     private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
+    private val uploadQueueRepository: UploadQueueRepository,
     private val uploadScheduler: UploadScheduler,
     private val deleteScheduler: DeleteScheduler
 ) : ViewModel() {
@@ -62,6 +64,7 @@ class GalleryViewModel(
                     photoList = photoList,
                     galleryItems = groupPhotosByDate(photoList)
                     ) }
+                uploadQueueRepository.addMediaItemsToDb(galleryUiState.value.photoList)
             } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
             } catch (e: SecurityException){
@@ -201,6 +204,11 @@ class GalleryViewModel(
             }
         }
     }
+    fun deleteMediaFileFromDb(uriSet: Set<Uri>){
+        viewModelScope.launch {
+            uploadQueueRepository.deleteMediaItemFromDb(uriSet)
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
             uploadScheduler.uploadStatus.collect { status ->
@@ -225,10 +233,12 @@ class GalleryViewModel(
                 val photoRepository = application.container.offlinePhotoRepository
                 val networkPhotoRepository = application.container.networkPhotoRepository
                 val settingsRepository = application.container.offlineSettingsRepository
+                val uploadQueueRepository = application.container.uploadQueueRepository
                 GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
                     settingsRepository,
+                    uploadQueueRepository,
                     application.container.uploadScheduler,
                     application.container.deleteScheduler
                     )
