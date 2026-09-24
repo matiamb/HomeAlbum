@@ -23,6 +23,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
@@ -32,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -138,7 +140,8 @@ fun ImageScreen(
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 galleryViewModel.uploadPhoto(currentUri)
-            }
+            },
+            pagerState = pagerState
         ) },
         modifier = modifier
     ) { paddingValues ->
@@ -275,6 +278,7 @@ fun BottomToolbar(
     onBackFabClicked: () -> Unit,
     onUploadClicked: () -> Unit,
     checkPhotoIsUploaded: () -> Unit,
+    pagerState: PagerState,
     modifier: Modifier = Modifier
 ){
     BottomAppBar(
@@ -313,10 +317,9 @@ fun BottomToolbar(
                     }
                 }
             )
-
             IconButton(onClick = {}, enabled = false) {
-                when (uiState.uploadStatus) {
-                    UploadStatus.UPLOADING -> {
+                when (uiState.photoList[pagerState.currentPage].uploadStatus) {
+                     UploadStatus.UPLOADING-> {
                         CircularProgressIndicator(modifier = Modifier.width(32.dp))
                     }
                     UploadStatus.PENDING -> {
@@ -329,13 +332,19 @@ fun BottomToolbar(
 
                     }
                     UploadStatus.FAILED -> {
-
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                     UploadStatus.UPLOADED -> {
-
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = ""
+                        )
                     }
                 }
-
             }
         },
         floatingActionButton = {
@@ -479,7 +488,8 @@ private fun BottomToolbarPreview(){
         onSharedClicked = {},
         onBackFabClicked = {},
         onUploadClicked = {},
-        checkPhotoIsUploaded = {}
+        checkPhotoIsUploaded = {},
+        pagerState = rememberPagerState(0, 0f, { 3 })
     )
 }
 

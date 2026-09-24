@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
 import androidx.core.net.toUri
 import com.example.homealbum.R
+import com.example.homealbum.model.UploadStatus
 import okio.IOException
 
 class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
@@ -20,25 +21,29 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         const val NOTIFICATION_ID = 1
     }
     private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
+    private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
         val uriString = inputData.getString(KEY_URI) ?: return Result.failure()
         val uri = uriString.toUri()
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         return try {
+            uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING)
             val serverResponse = photoRepository.uploadPhoto(uri)
-            if (serverResponse.isSuccessful){
-                makeNotification(applicationContext, serverResponse.body()?.string())
+            if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful ){
+                makeNotification(applicationContext, serverResponse.serverResponse!!.body()?.string())
+                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.UPLOADED, serverResponse.fileHash)
                 Result.success()
             } else {
                 makeNotification(applicationContext,
-                    applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.errorBody()?.string()}")
+                    applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
                 Result.failure()
             }
         } catch (e: IOException){
             Result.retry()
         } catch (e: Exception){
             makeNotification(applicationContext, e.message.toString())
+            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
             Result.failure()
         }
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.example.homealbum.model.FileToUpload
+import com.example.homealbum.model.UploadResult
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -23,7 +24,7 @@ import java.util.Collections.emptySet
 
 interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
-    suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
+    suspend fun uploadPhoto(fileUri: Uri): UploadResult
     suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody>
     suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody>
 }
@@ -45,7 +46,7 @@ class NetworkPhotoRepository(
 
     override suspend fun uploadPhoto(
         fileUri: Uri
-    ): Response<ResponseBody> = withContext(Dispatchers.IO){
+    ): UploadResult = withContext(Dispatchers.IO){
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
@@ -72,13 +73,14 @@ class NetworkPhotoRepository(
 
         }
         val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)
-
-        serverApiService.uploadPhoto(
+        val uploadResult = UploadResult(fileHash, null)
+        uploadResult.serverResponse = serverApiService.uploadPhoto(
             file = filePart,
             savedUrl = endpoint,
             fileHash = fileHash,
             folderName = folderRequestBody
         )
+        uploadResult
     }
 
     override suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody> = withContext(Dispatchers.IO) {

@@ -120,6 +120,9 @@ class GalleryViewModel(
             val userSettings = settingsRepository.userSettingsFlow.first()
             if (userSettings.isBackupEnabled){
                 uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
+                _galleryUiState.update {
+                    it.copy()
+                }
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
@@ -211,9 +214,21 @@ class GalleryViewModel(
     }
     private fun observeUpload(){
         viewModelScope.launch {
-            uploadScheduler.uploadStatus.collect { status ->
+//            uploadScheduler.uploadStatus.collect { status ->
+//                _galleryUiState.update { state ->
+//                    state.copy(uploadStatus = status)
+//                }
+//            }
+            uploadQueueRepository.uploadInfo.collect { uploadInfos ->
                 _galleryUiState.update { state ->
-                    state.copy(uploadStatus = status)
+                    state.copy(
+                        photoList = state.photoList.map { mediaItem ->
+                            val uploadInfo = uploadInfos.find { it.uri == mediaItem.uri }
+                            uploadInfo?.let {
+                                mediaItem.copy(uploadStatus = uploadInfo.uploadStatus)
+                            } ?: mediaItem
+                        }
+                    )
                 }
             }
         }
