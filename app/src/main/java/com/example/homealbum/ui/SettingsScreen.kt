@@ -105,12 +105,18 @@ fun SettingsScreen(
                     settingsUiState = settingsUiState.value,
                     onBackupSwitched = { value ->
                         settingsViewModel.saveBackupEnabled(value)
+                        if (!value){
+                            settingsViewModel.saveAutomaticBackup(false)
+                        }
                     },
                     onMobileDataSwitched = { value ->
                         settingsViewModel.saveMobileDataUpload(value)
                     },
                     onSaveClicked = { textIp, textFolderName ->
                         settingsViewModel.saveServerSettings(textIp, textFolderName)
+                    },
+                    onAutoUploadSwitched = { value ->
+                        settingsViewModel.saveAutomaticBackup(value)
                     },
                     modifier = Modifier.padding(innerPadding)
                 )
@@ -127,6 +133,7 @@ fun SettingItemCard(
     onBackupSwitched: (Boolean) -> Unit,
     onMobileDataSwitched: (Boolean) -> Unit,
     onSaveClicked: (String, String) -> Unit,
+    onAutoUploadSwitched: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var textIp by remember(settingsState.serverIp) { mutableStateOf(settingsState.serverIp) }
@@ -163,16 +170,28 @@ fun SettingItemCard(
                     onBackupSwitched(value)
                 }
             )
+            if (settingsState.isBackupEnabled){
                 OptionSwitch(
-                    optionText = R.string.allow_upload_using_mobile_data,
-                    checked = settingsState.allowUploadMobileData,
-                    onCheckedChange = {value ->
+                    optionText = R.string.switch_enable_automatic_uploads,
+                    checked = settingsState.isAutomaticBackupEnabled,
+                    onCheckedChange = { value ->
                         haptic.performHapticFeedback(
                             hapticFeedbackType = HapticFeedbackType.ToggleOn
                         )
-                        onMobileDataSwitched(value)
+                        onAutoUploadSwitched(value)
                     }
                 )
+            }
+            OptionSwitch(
+                optionText = R.string.allow_upload_using_mobile_data,
+                checked = settingsState.allowUploadMobileData,
+                onCheckedChange = {value ->
+                    haptic.performHapticFeedback(
+                        hapticFeedbackType = HapticFeedbackType.ToggleOn
+                    )
+                    onMobileDataSwitched(value)
+                }
+            )
             TextField(
                 value = textIp,
                 onValueChange = { newText -> textIp = newText},
@@ -285,7 +304,7 @@ fun OptionSwitch(
 )
 {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -344,7 +363,7 @@ fun ServerStorageItem(
 @Preview
 @Composable
 private fun SettingsScreenPreview(){
-    val settingsState = UserSettings("","", true, false)
+    val settingsState = UserSettings("","", false, false, false)
     val settingsUiState = SettingsUiState(
         serverConnectionStatus = ServerConnectionStatus.CONNECTED,
         serverDiskSpace = DiskSpace(1.0, availableSpaceBytes = 0.1, usedSpaceBytes = 0.9))
@@ -353,6 +372,7 @@ private fun SettingsScreenPreview(){
         settingsUiState = settingsUiState,
         onBackupSwitched = {},
         onMobileDataSwitched = {},
+        onAutoUploadSwitched = {},
         onSaveClicked = {textIp, folderName ->}
         )
 }

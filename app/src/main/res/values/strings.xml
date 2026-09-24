@@ -54,4 +54,5 @@
     <string name="tooltip_restore_file">Restore file</string>
     <string name="clear_icon_string">Clear</string>
     <string name="trash_screen_banner">Items in the trash will be deleted permanently after 30 days</string>
+    <string name="switch_enable_automatic_uploads">Enable automatic uploads?</string>
 </resources>

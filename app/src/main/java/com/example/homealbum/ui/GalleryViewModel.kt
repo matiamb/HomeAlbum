@@ -53,7 +53,7 @@ class GalleryViewModel(
     val userSettings = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = UserSettings("", "", false, false)
+        initialValue = UserSettings("", "", false, false, false)
     )
     fun loadPhotos(){
         viewModelScope.launch {

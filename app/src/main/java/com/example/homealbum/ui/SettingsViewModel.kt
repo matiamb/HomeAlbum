@@ -28,7 +28,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false)
+        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false, isAutomaticBackupEnabled = false)
     )
     private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
@@ -103,7 +103,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             settingsRepository.saveBackupEnabled(isBackupEnabled)
         }
     }
-    fun saveMobileDataUpload(allowUpload : Boolean){
+    fun saveMobileDataUpload(allowUpload: Boolean){
         viewModelScope.launch {
             settingsRepository.saveMobileDataUpload(allowUpload = allowUpload)
         }
@@ -125,6 +125,11 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
                     it.copy(isChecking = false)
                 }
             }
+        }
+    }
+    fun saveAutomaticBackup(isAutomaticBackup: Boolean){
+        viewModelScope.launch {
+            settingsRepository.saveAutomaticBackupEnabled(isAutomaticBackup)
         }
     }
 
