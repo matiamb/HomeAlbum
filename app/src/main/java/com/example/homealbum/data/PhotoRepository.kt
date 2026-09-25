@@ -2,7 +2,6 @@ package com.example.homealbum.data
 
 import android.content.ContentResolver
 import android.content.ContentUris
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -14,9 +13,13 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.annotation.RequiresApi
 import com.example.homealbum.model.MediaItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 interface PhotoRepository{
+    val mediaItemListFlow: Flow<List<MediaItem>>
     suspend fun getLocalPhotos(): List<MediaItem>
     suspend fun prepareToTrashPhoto(uriSet: Set<Uri>): IntentSenderRequest?
     suspend fun getThumbnail(
@@ -26,12 +29,16 @@ interface PhotoRepository{
     ): Bitmap?
     suspend fun getTrashedFiles(): List<MediaItem>
     suspend fun restoreFiles(uriSet: Set<Uri>): IntentSenderRequest?
+    suspend fun refreshGallery()
 }
 class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
     /**
      * This method will request android to retrieve the image and videos it has from
      * the Camera folder, attempting to grab only the images taken by the user with the camera.
      */
+    private val _mediaItemList: MutableStateFlow<List<MediaItem>> = MutableStateFlow(emptyList())
+    override val mediaItemListFlow: Flow<List<MediaItem>> = _mediaItemList.asStateFlow()
+
 
     override suspend fun getLocalPhotos(): List<MediaItem> = withContext(Dispatchers.IO) {
         val photoList = mutableListOf<MediaItem>()
@@ -101,6 +108,7 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                 photoList.add(mediaItem)
             }
         }
+        _mediaItemList.value = photoList
         return@withContext photoList
     }
     override suspend fun prepareToTrashPhoto(uriSet: Set<Uri>): IntentSenderRequest? = withContext(Dispatchers.IO) {
@@ -227,5 +235,95 @@ class OfflinePhotoRepository(private val context: Context) : PhotoRepository {
                 false
             )
             IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+    }
+
+    override suspend fun refreshGallery() {
+        val oldUriList = mutableSetOf<Uri>()
+        for (mediaItem in _mediaItemList.value){
+            oldUriList.add(mediaItem.uri)
+        }
+        val newUriList = mutableSetOf<Uri>()
+        val photoList = mutableListOf<MediaItem>()
+
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Files.getContentUri("external")
+        }
+
+        val columns = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DATE_TAKEN
+        )
+        val cameraOnlyFiles = "${MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME} = ?"
+        val argumentSelection = arrayOf("Camera")
+
+        val displayOrder = "${MediaStore.Files.FileColumns.DATE_TAKEN} DESC"
+
+        context.contentResolver.query(
+            collection,
+            columns,
+            cameraOnlyFiles,
+            argumentSelection,
+            displayOrder
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_TAKEN)
+
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val mediaType = cursor.getInt(typeColumn)
+                val dateTaken = cursor.getLong(dateTakenColumn)
+                val mediaUri = if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE){
+                    ContentUris.withAppendedId(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        id
+                    )
+                } else {
+                    ContentUris.withAppendedId(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        id
+                    )
+                }
+                newUriList.add(mediaUri)
+                    if (!oldUriList.contains(mediaUri)){
+                        val mediaItem =
+                            if (mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
+                                MediaItem(
+                                    ContentUris.withAppendedId(
+                                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                        id
+                                    ),
+                                    isVideo = false,
+                                    dateTaken = dateTaken,
+                                    thumbnail = null
+                                )
+                            } else {
+                                MediaItem(
+                                    uri = ContentUris.withAppendedId(
+                                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                        id
+                                    ),
+                                    isVideo = true,
+                                    dateTaken = dateTaken,
+                                    thumbnail = getThumbnail(ContentUris.withAppendedId(
+                                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                        id
+                                    ),
+                                        300,
+                                        300)
+                                )
+                            }
+                        photoList.add(mediaItem)
+                    }
+            }
+            val deletedUris = oldUriList - newUriList
+            val finalMediaItemList = _mediaItemList.value.filter {
+                it.uri !in deletedUris
+            }
+            _mediaItemList.value = finalMediaItemList + photoList
+        }
     }
 }

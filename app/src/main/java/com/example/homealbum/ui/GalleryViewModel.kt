@@ -76,6 +76,13 @@ class GalleryViewModel(
 
         }
     }
+    fun refreshGallery(){
+        viewModelScope.launch {
+            photosRepo.refreshGallery()
+            val updatedMediaItemList = photosRepo.mediaItemListFlow.first()
+            uploadQueueRepository.addMediaItemsToDb(updatedMediaItemList)
+        }
+    }
 
     fun requestTrashPhoto(uri: Uri, onIntentReady: (IntentSenderRequest) -> Unit){
         viewModelScope.launch {
@@ -230,6 +237,21 @@ class GalleryViewModel(
                         }
                     )
                 }
+//                _galleryUiState.update { it.copy(
+//                    photoList = galleryUiState.value.photoList,
+//                    galleryItems = groupPhotosByDate(galleryUiState.value.photoList)
+//                ) }
+            }
+        }
+    }
+    private fun observeMediaItemList(){
+        viewModelScope.launch {
+            photosRepo.mediaItemListFlow.collect { items ->
+                _galleryUiState.update { state ->
+                    state.copy(
+                        photoList = items,
+                        galleryItems = groupPhotosByDate(items))
+                }
             }
         }
     }
@@ -240,6 +262,7 @@ class GalleryViewModel(
             checkServerConnection()
         }
         loadPhotos()
+        observeMediaItemList()
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

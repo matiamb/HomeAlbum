@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -82,6 +83,7 @@ import coil.request.ImageRequest
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.MediaItem
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.components.BaseTooltip
 import java.time.format.DateTimeFormatter
 
@@ -107,7 +109,7 @@ fun GalleryScreen(
             galleryViewModel.removeThrashedPhotoFromUi(galleryUiState.value.multipleSelectionSet)
             galleryViewModel.removeMediaFromServer(galleryUiState.value.multipleSelectionSet)
             galleryViewModel.deleteMediaFileFromDb(galleryUiState.value.multipleSelectionSet)
-            galleryViewModel.loadPhotos()
+            galleryViewModel.refreshGallery()
             galleryViewModel.clearMultipleSelectionSet()
         }
     }
@@ -234,7 +236,7 @@ fun GalleryScreen(
                 onImageLongClick = { uri ->
                     galleryViewModel.multipleSelection(uri)
                 },
-                onRefresh = {galleryViewModel.loadPhotos()},
+                onRefresh = {galleryViewModel.refreshGallery()},
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 modifier = Modifier.padding(innerPadding)
@@ -481,6 +483,15 @@ fun ImageThumbnail(
                     ),
                 contentScale = ContentScale.Crop
             )
+            Log.d("Mati", "MediaItem upload status: ${mediaItem.uploadStatus}")
+            if (mediaItem.uploadStatus == UploadStatus.PENDING) {
+                Icon(
+                    painterResource(R.drawable.outline_cloud_alert_24),
+                    contentDescription = "",
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
             if (mediaItem.isVideo) {
                 Icon(
                     Icons.Filled.PlayArrow,
