@@ -82,6 +82,7 @@ import coil.request.ImageRequest
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.MediaItem
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.components.BaseTooltip
 import java.time.format.DateTimeFormatter
 
@@ -481,6 +482,31 @@ fun ImageThumbnail(
                     ),
                 contentScale = ContentScale.Crop
             )
+            when(mediaItem.uploadStatus){
+                UploadStatus.PENDING -> {
+                    Icon(
+                        painterResource(R.drawable.outline_schedule_24),
+                        contentDescription = "",
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+                UploadStatus.UPLOADING -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+                UploadStatus.UPLOADED -> {
+                    Icon(
+                        painterResource(R.drawable.baseline_check_circle_24),
+                        contentDescription = "",
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+
+                else -> {
+
+                }
+            }
             if (mediaItem.isVideo) {
                 Icon(
                     Icons.Filled.PlayArrow,

@@ -24,12 +24,14 @@ import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import java.io.IOException
@@ -55,15 +57,17 @@ class GalleryViewModel(
         started = SharingStarted.Eagerly,
         initialValue = UserSettings("", "", false, false, false)
     )
+    private val _rawPhotoList = MutableStateFlow<List<MediaItem>>(emptyList())
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
             try {
                 val photoList = photosRepo.getLocalPhotos()
-                _galleryUiState.update { it.copy(
-                    photoList = photoList,
-                    galleryItems = groupPhotosByDate(photoList)
-                    ) }
+//                _galleryUiState.update { it.copy(
+//                    photoList = photoList,
+//                    galleryItems = groupPhotosByDate(photoList)
+//                    ) }
+                _rawPhotoList.value= photoList
                 uploadQueueRepository.addMediaItemsToDb(galleryUiState.value.photoList)
             } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
@@ -107,10 +111,8 @@ class GalleryViewModel(
         }
     }
     fun removeThrashedPhotoFromUi(uriSet: Set<Uri>){
-        for (uri in uriSet){
-            _galleryUiState.update { state ->
-                state.copy(photoList = state.photoList.filter { it.uri != uri })
-            }
+        _rawPhotoList.update { currentList ->
+            currentList.filter { it.uri !in uriSet }
         }
     }
     fun uploadPhoto(
@@ -219,16 +221,30 @@ class GalleryViewModel(
 //                    state.copy(uploadStatus = status)
 //                }
 //            }
-            uploadQueueRepository.uploadInfo.collect { uploadInfos ->
+//            uploadQueueRepository.uploadInfo.collect { uploadInfos ->
+//                _galleryUiState.update { state ->
+//                    state.copy(
+//                        photoList = state.photoList.map { mediaItem ->
+//                            val uploadInfo = uploadInfos.find { it.uri == mediaItem.uri }
+//                            uploadInfo?.let {
+//                                mediaItem.copy(uploadStatus = uploadInfo.uploadStatus)
+//                            } ?: mediaItem
+//                        }
+//                    )
+//                }
+//            }
+            combine(
+                _rawPhotoList,
+                uploadQueueRepository.uploadInfo
+            ){ photos, uploadInfos ->
+                val statusMap = uploadInfos.associate { it.uri to it.uploadStatus }
+                photos.map { photo ->
+                    photo.copy(uploadStatus = statusMap[photo.uri] ?: UploadStatus.IDLE)
+                }
+            }.collect { updatedFiles ->
                 _galleryUiState.update { state ->
-                    state.copy(
-                        photoList = state.photoList.map { mediaItem ->
-                            val uploadInfo = uploadInfos.find { it.uri == mediaItem.uri }
-                            uploadInfo?.let {
-                                mediaItem.copy(uploadStatus = uploadInfo.uploadStatus)
-                            } ?: mediaItem
-                        }
-                    )
+                    state.copy(photoList = updatedFiles,
+                        galleryItems = groupPhotosByDate(updatedFiles))
                 }
             }
         }
