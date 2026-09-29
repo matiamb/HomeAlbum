@@ -197,6 +197,8 @@ class GalleryViewModel(
     fun startMultipleUpload(){
         viewModelScope.launch {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
+                uploadQueueRepository.prepareFilesForUpload(galleryUiState.value.multipleSelectionSet.toList(),
+                    UploadStatus.PENDING)
                 uploadScheduler.scheduleMultipleUpload(
                     uriList = galleryUiState.value.multipleSelectionSet,
                     allowUploadMobileData = userSettings.value.allowUploadMobileData

@@ -22,4 +22,8 @@ interface MediaItemDao {
     suspend fun getMediaItemByUri(uri: String): MediaItemEntity?
     @Query("SELECT * FROM MediaItemEntity")
     fun observeAllMediaItems(): Flow<List<MediaItemEntity>>
+    @Query("SELECT * FROM MediaItemEntity WHERE uploadStatus = :status")
+    fun getMediaItemsByStatus(status: UploadStatus): List<MediaItemEntity>
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN (:uriList)")
+    fun prepareFilesForUpload(uriList: List<String>, status: UploadStatus)
 }

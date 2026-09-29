@@ -17,6 +17,8 @@ interface UploadQueueRepository{
     suspend fun addMediaItemsToDb(mediaItemList: List<MediaItem>)
     suspend fun deleteMediaItemFromDb(uriSet: Set<Uri>)
     suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, fileHash: String? = "")
+    suspend fun getPendingUploads(uploadStatus: UploadStatus): List<Uri>
+    suspend fun prepareFilesForUpload(uriList: List<Uri>, status: UploadStatus)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -34,7 +36,7 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
             for (item in mediaItemList){
                 mediaItemEntityList.add(MediaItemEntity(
                     uri = item.uri.toString(),
-                    uploadStatus = UploadStatus.PENDING
+                    uploadStatus = UploadStatus.IDLE
                 ))
             }
             mediaItemDao.insertMediaItems(mediaItemEntityList)
@@ -60,6 +62,28 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     ) {
         withContext(Dispatchers.IO){
             mediaItemDao.updateMediaItemStatus(uri.toString(), status, fileHash)
+        }
+    }
+    override suspend fun getPendingUploads(uploadStatus: UploadStatus): List<Uri> =
+        withContext(Dispatchers.IO){
+            val mediaItemsEntities = mediaItemDao.getMediaItemsByStatus(uploadStatus)
+            val uriList = mutableListOf<Uri>()
+            for (item in mediaItemsEntities){
+                uriList.add(item.uri.toUri())
+            }
+            return@withContext uriList
+        }
+
+    override suspend fun prepareFilesForUpload(
+        uriList: List<Uri>,
+        status: UploadStatus
+    ) {
+        val uriListString = mutableListOf<String>()
+        uriList.forEach { uri ->
+            uriListString.add(uri.toString())
+        }
+        withContext(Dispatchers.IO){
+            mediaItemDao.prepareFilesForUpload(uriListString, status)
         }
     }
 }
