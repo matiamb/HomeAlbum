@@ -15,7 +15,11 @@ import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.workers.UploadWorker.Companion.NOTIFICATION_ID
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import kotlin.time.Duration.Companion.milliseconds
 
 class MultipleUploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams){
     companion object {
@@ -61,7 +65,11 @@ class MultipleUploadWorker(context: Context, workerParams: WorkerParameters) : C
                 return Result.retry()
             } finally {
                 if (!statusChanged){
-                    uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+                    withContext(NonCancellable){
+                        withTimeoutOrNull(1000.milliseconds){
+                            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+                        }
+                    }
                 }
             }
         }

@@ -13,7 +13,12 @@ import com.example.homealbum.HomeAlbumApplication
 import androidx.core.net.toUri
 import com.example.homealbum.R
 import com.example.homealbum.model.UploadStatus
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.time.withTimeoutOrNull
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.IOException
+import kotlin.time.Duration.Companion.milliseconds
 
 class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
     companion object {
@@ -26,25 +31,41 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     override suspend fun doWork(): Result {
         val uriString = inputData.getString(KEY_URI) ?: return Result.failure()
         val uri = uriString.toUri()
+        var statusChanged = false
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         return try {
             uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING)
+            statusChanged = false
             val serverResponse = photoRepository.uploadPhoto(uri)
             if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful ){
                 makeNotification(applicationContext, serverResponse.serverResponse!!.body()?.string())
                 uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.UPLOADED, serverResponse.fileHash)
+                statusChanged = true
                 Result.success()
             } else {
                 makeNotification(applicationContext,
                     applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
+                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+                statusChanged = true
                 Result.failure()
             }
         } catch (e: IOException){
+            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.PENDING)
+            statusChanged = true
             Result.retry()
         } catch (e: Exception){
             makeNotification(applicationContext, e.message.toString())
             uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+            statusChanged = true
             Result.failure()
+        } finally {
+            withContext(NonCancellable){
+                withTimeoutOrNull(1000.milliseconds){
+                    if (!statusChanged){
+                        uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+                    }
+                }
+            }
         }
     }
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
