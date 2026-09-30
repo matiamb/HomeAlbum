@@ -67,7 +67,8 @@ class MultipleUploadWorker(context: Context, workerParams: WorkerParameters) : C
                 if (!statusChanged){
                     withContext(NonCancellable){
                         withTimeoutOrNull(1000.milliseconds){
-                            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+                            val targetStatus = if (isStopped) UploadStatus.PENDING else UploadStatus.FAILED
+                            uploadQueueRepository.updateMediaItemStatus(uri, targetStatus)
                         }
                     }
                 }

@@ -496,14 +496,17 @@ fun ImageThumbnail(
                     )
                 }
                 UploadStatus.UPLOADED -> {
+
+                }
+                UploadStatus.FAILED -> {
                     Icon(
-                        painterResource(R.drawable.baseline_check_circle_24),
+                        painterResource(R.drawable.outline_cloud_alert_24),
                         contentDescription = "",
-                        modifier = Modifier.align(Alignment.TopEnd)
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
-
-                else -> {
+                UploadStatus.IDLE -> {
 
                 }
             }

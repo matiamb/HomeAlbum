@@ -146,7 +146,7 @@ fun ImageScreen(
         modifier = modifier
     ) { paddingValues ->
         ImageRoll(
-            uiState,
+            uiState.value,
             pagerState,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
@@ -170,7 +170,7 @@ fun ImageScreen(
 
 @Composable
 fun ImageRoll(
-    uiState: State<GalleryUiState>,
+    uiState: GalleryUiState,
     pagerState: PagerState,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -198,7 +198,7 @@ fun ImageRoll(
                     }
                 }
         ) { page ->
-            val mediaItem = uiState.value.photoList[page]
+            val mediaItem = uiState.photoList[page]
             val isCurrentPage = pagerState.settledPage == page
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
@@ -311,14 +311,15 @@ fun BottomToolbar(
                 composable = {
                     IconButton(onClick = checkPhotoIsUploaded) {
                         Icon(
-                            painterResource(R.drawable.outline_cloud_alert_24),
+                            painterResource(R.drawable.outline_cloud_sync_24),
                             stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
                         )
                     }
                 }
             )
             IconButton(onClick = {}, enabled = false) {
-                when (uiState.photoList[pagerState.currentPage].uploadStatus) {
+                val currentFile = uiState.photoList.getOrNull(pagerState.currentPage)
+                when (currentFile?.uploadStatus) {
                      UploadStatus.UPLOADING-> {
                         CircularProgressIndicator(modifier = Modifier.width(32.dp))
                     }
@@ -333,17 +334,19 @@ fun BottomToolbar(
                     }
                     UploadStatus.FAILED -> {
                         Icon(
-                            Icons.Filled.Warning,
+                            painterResource(R.drawable.outline_cloud_alert_24),
                             contentDescription = "",
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
                     UploadStatus.UPLOADED -> {
                         Icon(
-                            Icons.Filled.Check,
-                            contentDescription = ""
+                            painterResource(R.drawable.outline_cloud_done_24),
+                            contentDescription = "",
+                            tint = Color(0xff2eef68)
                         )
                     }
+                    null -> {}
                 }
             }
         },

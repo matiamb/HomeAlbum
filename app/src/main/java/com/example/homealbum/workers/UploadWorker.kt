@@ -53,16 +53,12 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
             uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.PENDING)
             statusChanged = true
             Result.retry()
-        } catch (e: Exception){
-            makeNotification(applicationContext, e.message.toString())
-            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
-            statusChanged = true
-            Result.failure()
         } finally {
-            withContext(NonCancellable){
-                withTimeoutOrNull(1000.milliseconds){
-                    if (!statusChanged){
-                        uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
+            if (!statusChanged){
+                withContext(NonCancellable){
+                    withTimeoutOrNull(1000.milliseconds){
+                        val targetStatus = if (isStopped) UploadStatus.PENDING else UploadStatus.FAILED
+                        uploadQueueRepository.updateMediaItemStatus(uri, targetStatus)
                     }
                 }
             }
