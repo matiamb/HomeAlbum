@@ -1,6 +1,5 @@
 package com.example.homealbum.ui
 
-import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
 import androidx.annotation.StringRes
@@ -37,6 +36,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
+import java.util.UUID
 
 class GalleryViewModel(
     private val photosRepo: PhotoRepository,
@@ -68,7 +68,7 @@ class GalleryViewModel(
 //                    galleryItems = groupPhotosByDate(photoList)
 //                    ) }
                 _rawPhotoList.value= photoList
-                uploadQueueRepository.addMediaItemsToDb(galleryUiState.value.photoList)
+                uploadQueueRepository.addMediaItemsToDb(photoList)
             } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
             } catch (e: SecurityException){
@@ -121,7 +121,9 @@ class GalleryViewModel(
         viewModelScope.launch {
             val userSettings = settingsRepository.userSettingsFlow.first()
             if (userSettings.isBackupEnabled){
-                uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForUpload(listOf(uri), UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleUpload(setOf(uri), workerId, userSettings.allowUploadMobileData)
                 _galleryUiState.update {
                     it.copy()
                 }
@@ -197,10 +199,12 @@ class GalleryViewModel(
     fun startMultipleUpload(){
         viewModelScope.launch {
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
+                val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForUpload(galleryUiState.value.multipleSelectionSet.toList(),
-                    UploadStatus.PENDING)
-                uploadScheduler.scheduleMultipleUpload(
+                    UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleUpload(
                     uriList = galleryUiState.value.multipleSelectionSet,
+                    workerId = workerId,
                     allowUploadMobileData = userSettings.value.allowUploadMobileData
                 )
                 clearMultipleSelectionSet()
@@ -300,6 +304,9 @@ private fun groupPhotosByDate(photos: List<MediaItem>): List<GalleryItem>{
                 )
             }
         }
+}
+private fun generateWorkerId(): String{
+    return UUID.randomUUID().toString()
 }
 data class ToastText(
     @StringRes val message: Int = 0

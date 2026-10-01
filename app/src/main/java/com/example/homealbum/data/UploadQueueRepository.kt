@@ -1,7 +1,6 @@
 package com.example.homealbum.data
 
 import android.net.Uri
-import android.util.Log
 import androidx.core.net.toUri
 import com.example.homealbum.dao.MediaItemDao
 import com.example.homealbum.model.FileUploadInfo
@@ -16,9 +15,12 @@ interface UploadQueueRepository{
     val uploadInfo: Flow<List<FileUploadInfo>>
     suspend fun addMediaItemsToDb(mediaItemList: List<MediaItem>)
     suspend fun deleteMediaItemFromDb(uriSet: Set<Uri>)
-    suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, fileHash: String? = "")
-    suspend fun getPendingUploads(uploadStatus: UploadStatus): List<Uri>
-    suspend fun prepareFilesForUpload(uriList: List<Uri>, status: UploadStatus)
+    suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, fileHash: String?, workerId: String)
+    suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, workerId: String)
+    suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<Uri>
+    suspend fun prepareFilesForUpload(uriList: List<Uri>, status: UploadStatus, workerId: String)
+    suspend fun getMediaItemsByWorker(workerId: String): List<Uri>
+    suspend fun cleanUpStuckFilesByWorker(uriList: List<Uri>, status: UploadStatus, workerId: String)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -58,32 +60,68 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     override suspend fun updateMediaItemStatus(
         uri: Uri,
         status: UploadStatus,
-        fileHash: String?
+        fileHash: String?,
+        workerId: String
     ) {
         withContext(Dispatchers.IO){
-            mediaItemDao.updateMediaItemStatus(uri.toString(), status, fileHash)
+            mediaItemDao.updateMediaItemStatus(uri.toString(), status, fileHash, workerId)
         }
     }
-    override suspend fun getPendingUploads(uploadStatus: UploadStatus): List<Uri> =
+
+    override suspend fun updateMediaItemStatus(
+        uri: Uri,
+        status: UploadStatus,
+        workerId: String
+    ) {
         withContext(Dispatchers.IO){
-            val mediaItemsEntities = mediaItemDao.getMediaItemsByStatus(uploadStatus)
+            mediaItemDao.updateMediaItemStatus(uri.toString(), status, workerId)
+        }
+    }
+
+    override suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<Uri> =
+        withContext(Dispatchers.IO){
+            val mediaItemsEntities = mediaItemDao.getMediaItemsForWorker(uploadStatus, workerId)
             val uriList = mutableListOf<Uri>()
             for (item in mediaItemsEntities){
                 uriList.add(item.uri.toUri())
             }
             return@withContext uriList
         }
-
     override suspend fun prepareFilesForUpload(
         uriList: List<Uri>,
-        status: UploadStatus
+        status: UploadStatus,
+        workerId: String
     ) {
         val uriListString = mutableListOf<String>()
         uriList.forEach { uri ->
             uriListString.add(uri.toString())
         }
         withContext(Dispatchers.IO){
-            mediaItemDao.prepareFilesForUpload(uriListString, status)
+            mediaItemDao.prepareFilesForUpload(uriListString, status, workerId)
+        }
+    }
+
+    override suspend fun getMediaItemsByWorker(workerId: String): List<Uri> = withContext(
+        Dispatchers.IO) {
+        val mediaEntities = mediaItemDao.getMediaItemsByWorker(workerId)
+        val uriList = mutableListOf<Uri>()
+        for (item in mediaEntities){
+            uriList.add(item.uri.toUri())
+        }
+        return@withContext uriList
+    }
+
+    override suspend fun cleanUpStuckFilesByWorker(
+        uriList: List<Uri>,
+        status: UploadStatus,
+        workerId: String
+    ) {
+        val uriListString = mutableListOf<String>()
+        for (uri in uriList){
+            uriListString.add(uri.toString())
+        }
+        withContext(Dispatchers.IO){
+            mediaItemDao.cleanupStuckFilesByWorker(uriListString, status, workerId)
         }
     }
 }

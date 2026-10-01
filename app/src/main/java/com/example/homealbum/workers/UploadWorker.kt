@@ -4,64 +4,90 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
-import androidx.core.net.toUri
 import com.example.homealbum.R
 import com.example.homealbum.model.UploadStatus
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.time.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import okio.IOException
+import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
-class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
+class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams){
     companion object {
-        const val KEY_URI = "photo_uri"
+        const val WORKER_ID = ""
         const val NOTIFICATION_ID = 1
     }
     private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
-        val uriString = inputData.getString(KEY_URI) ?: return Result.failure()
-        val uri = uriString.toUri()
+        val workerId = inputData.getString(WORKER_ID) ?: return Result.failure()
+        val cleanupUris = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
+        uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
+        val uriList: List<Uri> = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
+//        for (uriString in uriListString){
+//            uriList.add(uriString.toUri())
+//        }
+        val tempTotalFiles = uriList.size
+        var tempSuccessFiles = 0
         var statusChanged = false
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
-        return try {
-            uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING)
+        if (uriList.isEmpty()){
+            return Result.failure()
+        }
+        for (uri in uriList){
+            uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
-            val serverResponse = photoRepository.uploadPhoto(uri)
-            if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful ){
-                makeNotification(applicationContext, serverResponse.serverResponse!!.body()?.string())
-                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.UPLOADED, serverResponse.fileHash)
+            try {
+                val serverResponse = photoRepository.uploadPhoto(uri)
+                if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful){
+                    //makeNotification(applicationContext, serverResponse.body()?.string())
+                    uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADED, fileHash = serverResponse.fileHash, workerId = workerId)
+                    statusChanged = true
+                    tempSuccessFiles++
+                    makeNotification(applicationContext, "$tempSuccessFiles of $tempTotalFiles uploaded")
+                } else {
+                    makeNotification(applicationContext,
+                        applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
+                    uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.FAILED,workerId = workerId)
+                    statusChanged = true
+                }
+            } catch (e: IOException){
+                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.PENDING, workerId = workerId)
                 statusChanged = true
-                Result.success()
-            } else {
-                makeNotification(applicationContext,
-                    applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
-                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.FAILED)
-                statusChanged = true
-                Result.failure()
-            }
-        } catch (e: IOException){
-            uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.PENDING)
-            statusChanged = true
-            Result.retry()
-        } finally {
-            if (!statusChanged){
-                withContext(NonCancellable){
-                    withTimeoutOrNull(1000.milliseconds){
-                        val targetStatus = if (isStopped) UploadStatus.PENDING else UploadStatus.FAILED
-                        uploadQueueRepository.updateMediaItemStatus(uri, targetStatus)
+                return Result.retry()
+            } finally {
+                if (!statusChanged){
+                    withContext(NonCancellable){
+                        withTimeoutOrNull(1000.milliseconds){
+                            val targetStatus = if (isStopped) UploadStatus.PENDING else UploadStatus.FAILED
+                            uploadQueueRepository.updateMediaItemStatus(uri, targetStatus, workerId = workerId)
+                        }
                     }
                 }
             }
+        }
+    //catch (e: Exception){
+//            makeNotification(applicationContext, "")
+//            Result.failure()
+//        }
+        val totalFiles = uploadQueueRepository.getMediaItemsByWorker(workerId)
+        val successFiles = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADED, workerId)
+        Log.d("Mati", "${successFiles.size} of ${totalFiles.size} uploaded")
+        return if(totalFiles.isNotEmpty() && successFiles.size.toDouble()/totalFiles.size.toDouble() >= 0.5){
+            makeNotification(context = applicationContext, message = "${successFiles.size} of ${totalFiles.size} uploaded")
+            Result.success()
+        } else {
+            makeNotification(context = applicationContext, message = "Warning. Only ${successFiles.size} of ${totalFiles.size} uploaded")
+            Result.failure()
         }
     }
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)

@@ -11,5 +11,6 @@ data class MediaItemEntity(
     val id: Int = 0,
     val uri: String,
     val uploadStatus: UploadStatus,
+    val workerId: String? = null,
     val fileHash: String = ""
 )

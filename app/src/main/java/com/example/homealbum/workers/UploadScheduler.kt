@@ -14,12 +14,14 @@ import kotlinx.coroutines.flow.map
 
 interface UploadScheduler {
     val uploadStatus: Flow<UploadStatus>
+//    fun scheduleUpload(
+//        uri: Uri,
+//        workerId: String,
+//        allowUploadMobileData: Boolean
+//    )
     fun scheduleUpload(
-        uri: Uri,
-        allowUploadMobileData: Boolean
-    )
-    fun scheduleMultipleUpload(
         uriList: Set<Uri>,
+        workerId: String,
         allowUploadMobileData: Boolean
     )
 }
@@ -43,34 +45,37 @@ class WorkManagerUploadScheduler(
             }
         }
 
-    override fun scheduleUpload(
-        uri: Uri,
-        allowUploadMobileData: Boolean) {
-        val networkType = if (allowUploadMobileData){
-            NetworkType.CONNECTED
-        } else {
-            NetworkType.UNMETERED
-        }
-        val constraints= Constraints.Builder()
-            .setRequiredNetworkType(networkType)
-            .setRequiresBatteryNotLow(true)
-            .build()
-        val request = OneTimeWorkRequestBuilder<UploadWorker>()
-            .addTag(UPLOAD_TAG)
-            .setConstraints(constraints)
-            .setInputData(
-                workDataOf(UploadWorker.KEY_URI to uri.toString())
-            )
-            .build()
-        workManager.enqueueUniqueWork(
-            uniqueWorkName = "upload_$uri",
-            existingWorkPolicy = ExistingWorkPolicy.REPLACE,
-            request = request
-        )
-    }
+//    override fun scheduleUpload(
+//        uri: Uri,
+//        workerId: String,
+//        allowUploadMobileData: Boolean) {
+//        val networkType = if (allowUploadMobileData){
+//            NetworkType.CONNECTED
+//        } else {
+//            NetworkType.UNMETERED
+//        }
+//        val constraints= Constraints.Builder()
+//            .setRequiredNetworkType(networkType)
+//            .setRequiresBatteryNotLow(true)
+//            .build()
+//        val request = OneTimeWorkRequestBuilder<UploadWorker>()
+//            .addTag(UPLOAD_TAG)
+//            .setConstraints(constraints)
+//            .setInputData(
+//                workDataOf(UploadWorker.KEY_URI to uri.toString(),
+//                    UploadWorker.WORKER_ID to workerId)
+//            )
+//            .build()
+//        workManager.enqueueUniqueWork(
+//            uniqueWorkName = "upload_$uri",
+//            existingWorkPolicy = ExistingWorkPolicy.REPLACE,
+//            request = request
+//        )
+//    }
 
-    override fun scheduleMultipleUpload(
+    override fun scheduleUpload(
         uriList: Set<Uri>,
+        workerId: String,
         allowUploadMobileData: Boolean
     ) {
         val networkType = if (allowUploadMobileData){
@@ -82,11 +87,11 @@ class WorkManagerUploadScheduler(
             .setRequiredNetworkType(networkType)
             .setRequiresBatteryNotLow(true)
             .build()
-        val request = OneTimeWorkRequestBuilder<MultipleUploadWorker>()
+        val request = OneTimeWorkRequestBuilder<UploadWorker>()
             .addTag(MULTIPLE_UPLOAD_TAG)
             .setConstraints(constraints)
             .setInputData(
-                workDataOf(MultipleUploadWorker.KEY_LIST_URI to uriList.map { it.toString() }.toTypedArray())
+                workDataOf(UploadWorker.WORKER_ID to workerId)
             )
             .build()
         val sortedUriList = uriList.sortedBy { it.toString() }

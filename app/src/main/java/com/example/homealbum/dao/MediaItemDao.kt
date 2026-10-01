@@ -1,11 +1,9 @@
 package com.example.homealbum.dao
 
 import androidx.room3.Dao
-import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
-import androidx.room3.Update
 import com.example.homealbum.data.MediaItemEntity
 import com.example.homealbum.model.UploadStatus
 import kotlinx.coroutines.flow.Flow
@@ -14,16 +12,22 @@ import kotlinx.coroutines.flow.Flow
 interface MediaItemDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMediaItems(mediaItemList: List<MediaItemEntity>)
-    @Query("UPDATE MediaItemEntity SET uploadStatus = :status, fileHash = :fileHash WHERE uri = :uri")
-    suspend fun updateMediaItemStatus(uri: String, status: UploadStatus, fileHash: String?)
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status, fileHash = :fileHash WHERE uri = :uri AND workerId = :workerId")
+    suspend fun updateMediaItemStatus(uri: String, status: UploadStatus, fileHash: String?, workerId: String?)
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri = :uri AND workerId = :workerId")
+    suspend fun updateMediaItemStatus(uri: String, status: UploadStatus, workerId: String?)
     @Query("DELETE FROM MediaItemEntity WHERE uri IN (:uriList)")
     suspend fun deleteMediaItem(uriList: List<String>)
     @Query("SELECT * FROM MediaItemEntity WHERE uri = :uri")
     suspend fun getMediaItemByUri(uri: String): MediaItemEntity?
     @Query("SELECT * FROM MediaItemEntity")
     fun observeAllMediaItems(): Flow<List<MediaItemEntity>>
-    @Query("SELECT * FROM MediaItemEntity WHERE uploadStatus = :status")
-    fun getMediaItemsByStatus(status: UploadStatus): List<MediaItemEntity>
-    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN (:uriList)")
-    fun prepareFilesForUpload(uriList: List<String>, status: UploadStatus)
+    @Query("SELECT * FROM MediaItemEntity WHERE uploadStatus = :status AND workerId = :workerId")
+    fun getMediaItemsForWorker(status: UploadStatus, workerId: String): List<MediaItemEntity>
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status, workerId = :workerId WHERE uri IN (:uriList)")
+    fun prepareFilesForUpload(uriList: List<String>, status: UploadStatus, workerId: String)
+    @Query("SELECT * FROM MediaItemEntity WHERE workerId = :workerId")
+    fun getMediaItemsByWorker(workerId: String): List<MediaItemEntity>
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN (:uriList) AND workerId = :workerId")
+    fun cleanupStuckFilesByWorker(uriList: List<String>, status: UploadStatus, workerId: String)
 }
