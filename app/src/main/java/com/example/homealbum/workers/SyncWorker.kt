@@ -31,7 +31,7 @@ class SyncWorker(context: Context, workerParams: WorkerParameters) : CoroutineWo
             val missingHashes = photoRepository.syncMediaFiles(hashList)
             if (missingHashes.isNotEmpty()){
                 uploadQueueRepository.updateMediaItemStatusByHash(
-                    missingHashes, UploadStatus.PENDING)
+                    missingHashes, UploadStatus.NOT_UPLOADED)
                 }
             val syncedList = hashList.toSet() - missingHashes.toSet()
             if (syncedList.isNotEmpty()){

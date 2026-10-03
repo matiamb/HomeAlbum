@@ -3,7 +3,7 @@ package com.example.homealbum.model
 enum class UploadStatus {
     UPLOADING,
     PENDING,
-    IDLE,
+    NOT_UPLOADED,
     FAILED,
     UPLOADED
 }

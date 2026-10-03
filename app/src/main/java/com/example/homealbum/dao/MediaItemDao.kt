@@ -36,6 +36,6 @@ interface MediaItemDao {
     fun getAllFileHashes(): List<String>
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE fileHash IN (:fileHash)")
     fun updateMediaItemStatusByFileHash(fileHash: List<String>, status: UploadStatus)
-    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN :uri")
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri = :uri")
     fun updateMediaItemStatusByUri(uri: String, status: UploadStatus)
 }

@@ -43,7 +43,7 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
             for (item in mediaItemList){
                 mediaItemEntityList.add(MediaItemEntity(
                     uri = item.uri.toString(),
-                    uploadStatus = UploadStatus.IDLE
+                    uploadStatus = UploadStatus.NOT_UPLOADED
                 ))
             }
             mediaItemDao.insertMediaItems(mediaItemEntityList)

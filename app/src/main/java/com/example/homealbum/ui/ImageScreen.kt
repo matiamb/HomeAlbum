@@ -23,7 +23,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
@@ -40,7 +39,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -59,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -336,8 +335,12 @@ fun BottomToolbar(
                             contentDescription = ""
                         )
                     }
-                    UploadStatus.IDLE -> {
-
+                    UploadStatus.NOT_UPLOADED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_off_24),
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.primaryContainer
+                        )
                     }
                     UploadStatus.FAILED -> {
                         Icon(
@@ -490,6 +493,13 @@ private fun sharePhoto(context: Context, uri: Uri){
 @Composable
 private fun BottomToolbarPreview(){
     val fakeUiState = GalleryUiState(
+        photoList = listOf(
+            com.example.homealbum.model.MediaItem(
+                "content://media/external/images/media/74".toUri(),
+                false,
+                0L,
+                null,
+                UploadStatus.NOT_UPLOADED))
         //uploadStatus = UploadStatus.UPLOADING
     )
     BottomToolbar(

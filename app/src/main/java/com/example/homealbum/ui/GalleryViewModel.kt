@@ -263,7 +263,7 @@ class GalleryViewModel(
             ){ photos, uploadInfos ->
                 val statusMap = uploadInfos.associate { it.uri to it.uploadStatus }
                 photos.map { photo ->
-                    photo.copy(uploadStatus = statusMap[photo.uri] ?: UploadStatus.IDLE)
+                    photo.copy(uploadStatus = statusMap[photo.uri] ?: UploadStatus.NOT_UPLOADED)
                 }
             }.collect { updatedFiles ->
                 _galleryUiState.update { state ->

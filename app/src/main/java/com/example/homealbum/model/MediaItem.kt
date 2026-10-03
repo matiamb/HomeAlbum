@@ -8,5 +8,5 @@ data class MediaItem(
     val isVideo: Boolean,
     val dateTaken: Long,
     val thumbnail: Bitmap?,
-    val uploadStatus: UploadStatus = UploadStatus.IDLE
+    val uploadStatus: UploadStatus = UploadStatus.NOT_UPLOADED
 )
