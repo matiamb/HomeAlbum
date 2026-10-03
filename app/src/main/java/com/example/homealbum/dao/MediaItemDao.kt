@@ -18,8 +18,8 @@ interface MediaItemDao {
     suspend fun updateMediaItemStatus(uri: String, status: UploadStatus, workerId: String?)
     @Query("DELETE FROM MediaItemEntity WHERE uri IN (:uriList)")
     suspend fun deleteMediaItem(uriList: List<String>)
-    @Query("SELECT * FROM MediaItemEntity WHERE uri = :uri")
-    suspend fun getMediaItemByUri(uri: String): MediaItemEntity?
+    @Query("SELECT uri FROM MediaItemEntity WHERE fileHash IS NULL")
+    suspend fun getAllUris(): List<String>
     @Query("SELECT * FROM MediaItemEntity")
     fun observeAllMediaItems(): Flow<List<MediaItemEntity>>
     @Query("SELECT * FROM MediaItemEntity WHERE uploadStatus = :status AND workerId = :workerId")
@@ -30,4 +30,10 @@ interface MediaItemDao {
     fun getMediaItemsByWorker(workerId: String): List<MediaItemEntity>
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN (:uriList) AND workerId = :workerId")
     fun cleanupStuckFilesByWorker(uriList: List<String>, status: UploadStatus, workerId: String)
+    @Query("UPDATE MediaItemEntity SET fileHash = :fileHash WHERE uri = :uri")
+    fun updateFileHash(uri: String, fileHash: String?)
+    @Query("SELECT fileHash FROM MediaItemEntity WHERE fileHash IS NOT NULL")
+    fun getAllFileHashes(): List<String>
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE fileHash IN (:fileHash)")
+    fun updateMediaItemStatusByFileHash(fileHash: List<String>, status: UploadStatus)
 }

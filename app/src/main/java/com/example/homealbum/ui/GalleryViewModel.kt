@@ -26,6 +26,7 @@ import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.DeleteScheduler
+import com.example.homealbum.workers.SyncScheduler
 import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,7 +45,8 @@ class GalleryViewModel(
     private val settingsRepository: SettingsRepository,
     private val uploadQueueRepository: UploadQueueRepository,
     private val uploadScheduler: UploadScheduler,
-    private val deleteScheduler: DeleteScheduler
+    private val deleteScheduler: DeleteScheduler,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -133,22 +135,23 @@ class GalleryViewModel(
         }
     }
    fun checkIfPhotoExists(uri: Uri){
-       viewModelScope.launch {
-           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-               try {
-                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-                   if (serverResponse.isSuccessful){
-                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
-                   } else {
-                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
-                   }
-               } catch (e: IOException){
-                   _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
-               }
-           } else {
-               _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
-           }
-       }
+//       viewModelScope.launch {
+//           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+//               try {
+//                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+//                   if (serverResponse.isSuccessful){
+//                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
+//                   } else {
+//                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
+//                   }
+//               } catch (e: IOException){
+//                   _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
+//               }
+//           } else {
+//               _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
+//           }
+//       }
+       syncMediaFiles()
     }
     fun checkServerConnection(){
         viewModelScope.launch {
@@ -220,6 +223,11 @@ class GalleryViewModel(
             uploadQueueRepository.deleteMediaItemFromDb(uriSet)
         }
     }
+    fun syncMediaFiles(){
+        viewModelScope.launch {
+            syncScheduler.scheduleSync()
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
 //            uploadScheduler.uploadStatus.collect { status ->
@@ -277,7 +285,8 @@ class GalleryViewModel(
                     settingsRepository,
                     uploadQueueRepository,
                     application.container.uploadScheduler,
-                    application.container.deleteScheduler
+                    application.container.deleteScheduler,
+                    application.container.syncScheduler
                     )
             }
         }

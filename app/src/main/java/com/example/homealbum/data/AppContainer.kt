@@ -7,8 +7,10 @@ import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.work.WorkManager
 import com.example.homealbum.network.ServerApiService
 import com.example.homealbum.workers.DeleteScheduler
+import com.example.homealbum.workers.SyncScheduler
 import com.example.homealbum.workers.UploadScheduler
 import com.example.homealbum.workers.WorkManagerDeleteScheduler
+import com.example.homealbum.workers.WorkManagerSyncScheduler
 import com.example.homealbum.workers.WorkManagerUploadScheduler
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -22,6 +24,7 @@ interface AppContainer {
     val uploadScheduler: UploadScheduler
     val deleteScheduler: DeleteScheduler
     val mediaItemDatabase: MediaItemDatabase
+    val syncScheduler: SyncScheduler
 }
 private val Context.dataStore by preferencesDataStore(name = "user_settings")
 class DefaultAppContainer(context: Context) : AppContainer{
@@ -69,5 +72,8 @@ class DefaultAppContainer(context: Context) : AppContainer{
         Room.databaseBuilder<MediaItemDatabase>(context, "media_item_database")
             .setDriver(AndroidSQLiteDriver())
             .build()
+    }
+    override val syncScheduler: SyncScheduler by lazy{
+        WorkManagerSyncScheduler(workManager = workManager)
     }
 }

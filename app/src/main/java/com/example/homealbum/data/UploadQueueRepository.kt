@@ -21,6 +21,10 @@ interface UploadQueueRepository{
     suspend fun prepareFilesForUpload(uriList: List<Uri>, status: UploadStatus, workerId: String)
     suspend fun getMediaItemsByWorker(workerId: String): List<Uri>
     suspend fun cleanUpStuckFilesByWorker(uriList: List<Uri>, status: UploadStatus, workerId: String)
+    suspend fun getAllUris(): List<Uri>
+    suspend fun updateFileHash(uri: Uri, fileHash: String?)
+    suspend fun getAllFileHashes(): List<String>
+    suspend fun updateMediaItemStatusByHash(fileHashList: List<String>, status: UploadStatus)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -122,6 +126,34 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
         }
         withContext(Dispatchers.IO){
             mediaItemDao.cleanupStuckFilesByWorker(uriListString, status, workerId)
+        }
+    }
+
+    override suspend fun getAllUris(): List<Uri> = withContext(Dispatchers.IO){
+        val uriStrings = mediaItemDao.getAllUris()
+        val uriList = mutableListOf<Uri>()
+        for (uriString in uriStrings){
+            uriList.add(uriString.toUri())
+        }
+        uriList
+    }
+
+    override suspend fun updateFileHash(uri: Uri, fileHash: String?) {
+        withContext(Dispatchers.IO){
+            mediaItemDao.updateFileHash(uri.toString(), fileHash)
+        }
+    }
+
+    override suspend fun getAllFileHashes(): List<String> = withContext(Dispatchers.IO){
+        mediaItemDao.getAllFileHashes()
+    }
+
+    override suspend fun updateMediaItemStatusByHash(
+        fileHashList: List<String>,
+        status: UploadStatus
+    ) {
+        withContext(Dispatchers.IO){
+            mediaItemDao.updateMediaItemStatusByFileHash(fileHashList, status)
         }
     }
 }

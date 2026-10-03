@@ -1,5 +1,7 @@
 package com.example.homealbum.network
 
+import com.example.homealbum.data.SyncRequest
+import com.example.homealbum.data.SyncResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
@@ -47,4 +49,9 @@ interface ServerApiService{
         @Query("fileHash") fileHashList: List<String>,
         @Part("folderName") folderName: RequestBody
     ): Response<ResponseBody>
+    @GET
+    suspend fun syncFiles(
+        @Url savedUrl: String,
+        @Query("fileHashList") fileHashList: SyncRequest
+    ): SyncResponse
 }
