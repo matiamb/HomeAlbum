@@ -25,6 +25,7 @@ interface UploadQueueRepository{
     suspend fun updateFileHash(uri: Uri, fileHash: String?)
     suspend fun getAllFileHashes(): List<String>
     suspend fun updateMediaItemStatusByHash(fileHashList: List<String>, status: UploadStatus)
+    suspend fun updateMediaItemStatusByUri(uri: String, status: UploadStatus)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -154,6 +155,15 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     ) {
         withContext(Dispatchers.IO){
             mediaItemDao.updateMediaItemStatusByFileHash(fileHashList, status)
+        }
+    }
+
+    override suspend fun updateMediaItemStatusByUri(
+        uri: String,
+        status: UploadStatus
+    ) {
+        withContext(Dispatchers.IO){
+            mediaItemDao.updateMediaItemStatusByUri(uri, status)
         }
     }
 }

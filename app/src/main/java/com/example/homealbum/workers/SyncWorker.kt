@@ -7,32 +7,42 @@ import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.model.UploadStatus
 import okio.IOException
+import retrofit2.HttpException
 
 class SyncWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams) {
     private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
     override suspend fun doWork(): Result {
-        val uriList = uploadQueueRepository.getAllUris()
-        Log.d("Mati", uriList.toString())
-        uriList.forEach { uri ->
-            val hash = photoRepository.getFileHash(uri)
-            uploadQueueRepository.updateFileHash(uri, hash)
-        }
         try {
+            val uriList = uploadQueueRepository.getAllUris()
+            Log.d("Mati", uriList.toString())
+            uriList.forEach { uri ->
+                val hash = photoRepository.getFileHash(uri)
+                if (hash != null){
+                    uploadQueueRepository.updateFileHash(uri, hash)
+                } else {
+                    uploadQueueRepository.updateMediaItemStatusByUri(uri.toString(), UploadStatus.FAILED)
+                }
+            }
             val hashList = uploadQueueRepository.getAllFileHashes()
-            Log.d("Mati", hashList.toString())
+            if (hashList.isEmpty()){
+                return Result.success()
+            }
             val missingHashes = photoRepository.syncMediaFiles(hashList)
             if (missingHashes.isNotEmpty()){
-                uploadQueueRepository.updateMediaItemStatusByHash(missingHashes, UploadStatus.PENDING)
-                val syncedList = hashList.toSet() - missingHashes.toSet()
-                uploadQueueRepository.updateMediaItemStatusByHash(syncedList.toList(), UploadStatus.UPLOADED)
-            } else {
-                val syncedList = hashList.toSet() - missingHashes.toSet()
-                uploadQueueRepository.updateMediaItemStatusByHash(syncedList.toList(), UploadStatus.UPLOADED)
+                uploadQueueRepository.updateMediaItemStatusByHash(
+                    missingHashes, UploadStatus.PENDING)
+                }
+            val syncedList = hashList.toSet() - missingHashes.toSet()
+            if (syncedList.isNotEmpty()){
+                uploadQueueRepository.updateMediaItemStatusByHash(
+                    syncedList.toList(), UploadStatus.UPLOADED)
             }
             return Result.success()
         } catch (e: IOException){
             return Result.retry()
+        } catch (e: HttpException){
+            return Result.failure()
         }
     }
 }

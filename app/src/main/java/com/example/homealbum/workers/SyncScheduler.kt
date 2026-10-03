@@ -19,7 +19,7 @@ class WorkManagerSyncScheduler(
     private val workManager: WorkManager
 ) : SyncScheduler {
     override val syncStatus: Flow<Boolean> =
-        workManager.getWorkInfosByTagFlow(SYNC_TAG).map { workInfos ->
+        workManager.getWorkInfosForUniqueWorkFlow(SYNC_TAG).map { workInfos ->
             when{
                 workInfos.any {
                     it.state == WorkInfo.State.RUNNING
