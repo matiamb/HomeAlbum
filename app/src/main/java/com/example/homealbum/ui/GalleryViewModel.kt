@@ -135,23 +135,24 @@ class GalleryViewModel(
         }
     }
    fun checkIfPhotoExists(uri: Uri){
-//       viewModelScope.launch {
-//           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
-//               try {
+       viewModelScope.launch {
+           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+               try {
 //                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
 //                   if (serverResponse.isSuccessful){
 //                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
 //                   } else {
 //                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
 //                   }
-//               } catch (e: IOException){
-//                   _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
-//               }
-//           } else {
-//               _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
-//           }
-//       }
-       syncMediaFiles()
+                   syncScheduler.scheduleSync()
+               } catch (e: IOException){
+                   _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
+               }
+           } else {
+               _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
+           }
+       }
+       //syncMediaFiles()
     }
     fun checkServerConnection(){
         viewModelScope.launch {
@@ -228,6 +229,15 @@ class GalleryViewModel(
             syncScheduler.scheduleSync()
         }
     }
+    private fun observeSyncStatus(){
+        viewModelScope.launch {
+            syncScheduler.syncStatus.collect {
+                _galleryUiState.update { state ->
+                    state.copy(syncInProgress = it)
+                }
+            }
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
 //            uploadScheduler.uploadStatus.collect { status ->
@@ -264,6 +274,7 @@ class GalleryViewModel(
         }
     }
     init {
+        observeSyncStatus()
         observeUpload()
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }

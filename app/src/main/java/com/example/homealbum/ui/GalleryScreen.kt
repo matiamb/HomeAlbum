@@ -22,7 +22,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -36,8 +38,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -222,24 +227,30 @@ fun GalleryScreen(
                 Toast.makeText(context, message.message, Toast.LENGTH_LONG).show()
             }
         }
-        if(hasPermission){
-            GalleryGrid(
-                galleryUiState = galleryUiState.value,
-                onImageClicked = { index, uri ->
-                    if (galleryUiState.value.multipleSelectionSet.isEmpty()){
-                        onImageClicked(index)
-                    } else {
+        if(hasPermission) {
+            Column(
+                modifier = Modifier.padding(innerPadding).fillMaxSize()
+            ) {
+                if (galleryUiState.value.syncInProgress) {
+                    SyncInProgressCard()
+                }
+                GalleryGrid(
+                    galleryUiState = galleryUiState.value,
+                    onImageClicked = { index, uri ->
+                        if (galleryUiState.value.multipleSelectionSet.isEmpty()) {
+                            onImageClicked(index)
+                        } else {
+                            galleryViewModel.multipleSelection(uri)
+                        }
+                    },
+                    onImageLongClick = { uri ->
                         galleryViewModel.multipleSelection(uri)
-                    }
-                                 },
-                onImageLongClick = { uri ->
-                    galleryViewModel.multipleSelection(uri)
-                },
-                onRefresh = {galleryViewModel.loadPhotos()},
-                sharedTransitionScope = sharedTransitionScope,
-                animatedVisibilityScope = animatedVisibilityScope,
-                modifier = Modifier.padding(innerPadding)
-            )
+                    },
+                    onRefresh = { galleryViewModel.loadPhotos() },
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+            }
         } else {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -579,6 +590,31 @@ fun FabButtonsColumn(
             Icon(
                 imageVector = Icons.Default.Clear,
                 contentDescription = stringResource(R.string.clear_selection_icon_string)
+            )
+        }
+    }
+}
+@Composable
+fun SyncInProgressCard(
+    modifier: Modifier = Modifier
+){
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            CircularProgressIndicator()
+            Text(
+                text = "Synchronization in progress, this might take a while...",
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     }

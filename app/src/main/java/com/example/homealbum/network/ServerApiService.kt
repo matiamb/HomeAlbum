@@ -6,6 +6,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
@@ -49,9 +50,9 @@ interface ServerApiService{
         @Query("fileHash") fileHashList: List<String>,
         @Part("folderName") folderName: RequestBody
     ): Response<ResponseBody>
-    @GET
+    @POST
     suspend fun syncFiles(
         @Url savedUrl: String,
-        @Query("fileHashList") fileHashList: SyncRequest
+        @Body fileHashList: SyncRequest
     ): SyncResponse
 }

@@ -309,11 +309,18 @@ fun BottomToolbar(
             BaseTooltip(
                 tooltipText = stringResource(R.string.check_if_file_is_in_the_server_icon_desc),
                 composable = {
-                    IconButton(onClick = checkPhotoIsUploaded) {
-                        Icon(
-                            painterResource(R.drawable.outline_cloud_sync_24),
-                            stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
-                        )
+                    IconButton(
+                        onClick = checkPhotoIsUploaded,
+                        enabled = !uiState.syncInProgress
+                    ) {
+                        if (uiState.syncInProgress){
+                            CircularProgressIndicator(modifier = Modifier.width(32.dp))
+                        } else {
+                            Icon(
+                                painterResource(R.drawable.outline_cloud_sync_24),
+                                stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
+                            )
+                        }
                     }
                 }
             )
@@ -483,7 +490,7 @@ private fun sharePhoto(context: Context, uri: Uri){
 @Composable
 private fun BottomToolbarPreview(){
     val fakeUiState = GalleryUiState(
-        uploadStatus = UploadStatus.UPLOADING
+        //uploadStatus = UploadStatus.UPLOADING
     )
     BottomToolbar(
         uiState = fakeUiState,

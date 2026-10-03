@@ -3,6 +3,7 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import com.example.homealbum.model.FileToUpload
 import com.example.homealbum.model.UploadResult
 import com.example.homealbum.network.ServerApiService
@@ -27,7 +28,7 @@ interface ImageScreenRepository {
     suspend fun uploadPhoto(fileUri: Uri): UploadResult
     suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody>
     suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody>
-    suspend fun syncMediaFiles(fileHashList: List<String>): SyncResponse
+    suspend fun syncMediaFiles(fileHashList: List<String>): List<String>
     suspend fun getFileHash(uri: Uri): String?
 }
 
@@ -141,14 +142,15 @@ class NetworkPhotoRepository(
         )
     }
 
-    override suspend fun syncMediaFiles(fileHashList: List<String>): SyncResponse = withContext(Dispatchers.IO){
+    override suspend fun syncMediaFiles(fileHashList: List<String>): List<String> = withContext(Dispatchers.IO){
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val dynamicUrl = serverIp.trimEnd('/')
         val endpoint = "http://$dynamicUrl/api/v1/media/sync"
         val syncRequest = SyncRequest(fileHashList)
         val serverResponse = serverApiService.syncFiles(endpoint, syncRequest)
-        SyncResponse(serverResponse.missingHashes)
+        Log.d("Mati", serverResponse.missingHashes.toString())
+        serverResponse.missingHashes
     }
     private fun getFileNameFromUri(
         context: Context,

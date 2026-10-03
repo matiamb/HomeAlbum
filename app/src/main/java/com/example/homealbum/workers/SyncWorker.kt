@@ -20,10 +20,16 @@ class SyncWorker(context: Context, workerParams: WorkerParameters) : CoroutineWo
         }
         try {
             val hashList = uploadQueueRepository.getAllFileHashes()
-            //val missingHashes = photoRepository.syncMediaFiles(hashList)
-            //uploadQueueRepository.updateMediaItemStatusByHash(missingHashes.missingHashes, UploadStatus.PENDING)
-            //val syncedList = hashList.toSet() - missingHashes.missingHashes.toSet()
-            //uploadQueueRepository.updateMediaItemStatusByHash(syncedList.toList(), UploadStatus.UPLOADED)
+            Log.d("Mati", hashList.toString())
+            val missingHashes = photoRepository.syncMediaFiles(hashList)
+            if (missingHashes.isNotEmpty()){
+                uploadQueueRepository.updateMediaItemStatusByHash(missingHashes, UploadStatus.PENDING)
+                val syncedList = hashList.toSet() - missingHashes.toSet()
+                uploadQueueRepository.updateMediaItemStatusByHash(syncedList.toList(), UploadStatus.UPLOADED)
+            } else {
+                val syncedList = hashList.toSet() - missingHashes.toSet()
+                uploadQueueRepository.updateMediaItemStatusByHash(syncedList.toList(), UploadStatus.UPLOADED)
+            }
             return Result.success()
         } catch (e: IOException){
             return Result.retry()
