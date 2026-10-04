@@ -5,6 +5,7 @@ import androidx.core.net.toUri
 import com.example.homealbum.dao.MediaItemDao
 import com.example.homealbum.model.FileUploadInfo
 import com.example.homealbum.model.MediaItem
+import com.example.homealbum.model.MediaItemUriHash
 import com.example.homealbum.model.UploadStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,7 @@ interface UploadQueueRepository{
     suspend fun deleteMediaItemFromDb(uriSet: Set<Uri>)
     suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, fileHash: String?, workerId: String)
     suspend fun updateMediaItemStatus(uri: Uri, status: UploadStatus, workerId: String)
-    suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<Uri>
+    suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<MediaItemUriHash>
     suspend fun prepareFilesForUpload(uriList: List<Uri>, status: UploadStatus, workerId: String)
     suspend fun getMediaItemsByWorker(workerId: String): List<Uri>
     suspend fun cleanUpStuckFilesByWorker(uriList: List<Uri>, status: UploadStatus, workerId: String)
@@ -83,14 +84,14 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
         }
     }
 
-    override suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<Uri> =
+    override suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<MediaItemUriHash> =
         withContext(Dispatchers.IO){
-            val mediaItemsEntities = mediaItemDao.getMediaItemsForWorker(uploadStatus, workerId)
-            val uriList = mutableListOf<Uri>()
-            for (item in mediaItemsEntities){
-                uriList.add(item.uri.toUri())
-            }
-            return@withContext uriList
+            val mediaItemsUrisHash = mediaItemDao.getMediaItemsForWorker(uploadStatus, workerId)
+//            val uriList = mutableListOf<MediaItemUriHash>()
+//            for (item in mediaItemsEntities){
+//                uriList.add(item.uri.toUri())
+//            }
+            return@withContext mediaItemsUrisHash
         }
     override suspend fun prepareFilesForUpload(
         uriList: List<Uri>,

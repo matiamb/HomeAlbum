@@ -121,11 +121,15 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            val userSettings = settingsRepository.userSettingsFlow.first()
-            if (userSettings.isBackupEnabled){
+            //val userSettings = settingsRepository.userSettingsFlow.first()
+            if (userSettings.value.serverIp.isBlank()){
+                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+                return@launch
+            }
+            if (userSettings.value.isBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForUpload(listOf(uri), UploadStatus.PENDING, workerId)
-                uploadScheduler.scheduleUpload(setOf(uri), workerId, userSettings.allowUploadMobileData)
+                uploadScheduler.scheduleUpload(setOf(uri), workerId, userSettings.value.allowUploadMobileData)
                 _galleryUiState.update {
                     it.copy()
                 }
@@ -136,7 +140,12 @@ class GalleryViewModel(
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+           //val userSettings = settingsRepository.userSettingsFlow.first()
+           if (userSettings.value.serverIp.isBlank()){
+               _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+               return@launch
+           }
+           if (userSettings.value.isBackupEnabled){
                try {
 //                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
 //                   if (serverResponse.isSuccessful){
@@ -202,6 +211,10 @@ class GalleryViewModel(
     }
     fun startMultipleUpload(){
         viewModelScope.launch {
+            if (userSettings.value.serverIp.isBlank()){
+                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+                return@launch
+            }
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForUpload(galleryUiState.value.multipleSelectionSet.toList(),

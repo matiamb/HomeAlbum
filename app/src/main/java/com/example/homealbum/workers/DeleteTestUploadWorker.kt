@@ -37,7 +37,7 @@ class DeleteTestUploadWorker(context: Context, workerParams: WorkerParameters) :
         return try {
             uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
-            val serverResponse = photoRepository.uploadPhoto(uri)
+            val serverResponse = photoRepository.uploadPhoto(uri.toString())
             if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful ){
                 makeNotification(applicationContext, serverResponse.serverResponse!!.body()?.string())
                 uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.UPLOADED, serverResponse.fileHash, workerId = workerId)

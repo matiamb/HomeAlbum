@@ -5,6 +5,7 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import com.example.homealbum.data.MediaItemEntity
+import com.example.homealbum.model.MediaItemUriHash
 import com.example.homealbum.model.UploadStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -22,8 +23,8 @@ interface MediaItemDao {
     suspend fun getAllUris(): List<String>
     @Query("SELECT * FROM MediaItemEntity")
     fun observeAllMediaItems(): Flow<List<MediaItemEntity>>
-    @Query("SELECT * FROM MediaItemEntity WHERE uploadStatus = :status AND workerId = :workerId")
-    fun getMediaItemsForWorker(status: UploadStatus, workerId: String): List<MediaItemEntity>
+    @Query("SELECT uri, fileHash FROM MediaItemEntity WHERE uploadStatus = :status AND workerId = :workerId")
+    fun getMediaItemsForWorker(status: UploadStatus, workerId: String): List<MediaItemUriHash>
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status, workerId = :workerId WHERE uri IN (:uriList)")
     fun prepareFilesForUpload(uriList: List<String>, status: UploadStatus, workerId: String)
     @Query("SELECT * FROM MediaItemEntity WHERE workerId = :workerId")

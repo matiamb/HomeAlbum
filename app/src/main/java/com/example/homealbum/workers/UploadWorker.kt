@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
@@ -30,9 +31,13 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
         val workerId = inputData.getString(WORKER_ID) ?: return Result.failure()
-        val cleanupUris = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
+        val cleanupItems = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
+        val cleanupUris = mutableListOf<Uri>()
+        for ((uri) in cleanupItems){
+            cleanupUris.add(uri.toUri())
+        }
         uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
-        val uriList: List<Uri> = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
+        val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
 //        for (uriString in uriListString){
 //            uriList.add(uriString.toUri())
 //        }
@@ -43,25 +48,29 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         if (uriList.isEmpty()){
             return Result.failure()
         }
-        for (uri in uriList){
-            uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADING, workerId = workerId)
+        for ((uri1, fileHash) in uriList){
+            uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
             try {
-                val serverResponse = photoRepository.uploadPhoto(uri)
+                val serverResponse = if (fileHash == null){
+                    photoRepository.uploadPhoto(uri1)
+                } else {
+                    photoRepository.uploadPhoto(uri1, fileHash)
+                }
                 if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful){
                     //makeNotification(applicationContext, serverResponse.body()?.string())
-                    uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.UPLOADED, fileHash = serverResponse.fileHash, workerId = workerId)
+                    uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADED, fileHash = serverResponse.fileHash, workerId = workerId)
                     statusChanged = true
                     tempSuccessFiles++
                     makeNotification(applicationContext, "$tempSuccessFiles of $tempTotalFiles uploaded")
                 } else {
                     makeNotification(applicationContext,
                         applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
-                    uploadQueueRepository.updateMediaItemStatus(uri = uri, status = UploadStatus.FAILED,workerId = workerId)
+                    uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.FAILED,workerId = workerId)
                     statusChanged = true
                 }
             } catch (e: IOException){
-                uploadQueueRepository.updateMediaItemStatus(uri, UploadStatus.PENDING, workerId = workerId)
+                uploadQueueRepository.updateMediaItemStatus(uri1.toUri(), UploadStatus.PENDING, workerId = workerId)
                 statusChanged = true
                 return Result.retry()
             } finally {
@@ -69,7 +78,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                     withContext(NonCancellable){
                         withTimeoutOrNull(1000.milliseconds){
                             val targetStatus = if (isStopped) UploadStatus.PENDING else UploadStatus.FAILED
-                            uploadQueueRepository.updateMediaItemStatus(uri, targetStatus, workerId = workerId)
+                            uploadQueueRepository.updateMediaItemStatus(uri1.toUri(), targetStatus, workerId = workerId)
                         }
                     }
                 }
