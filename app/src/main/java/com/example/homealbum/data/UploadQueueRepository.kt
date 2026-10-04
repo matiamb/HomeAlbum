@@ -1,6 +1,7 @@
 package com.example.homealbum.data
 
 import android.net.Uri
+import android.util.Log
 import androidx.core.net.toUri
 import com.example.homealbum.dao.MediaItemDao
 import com.example.homealbum.model.FileUploadInfo
@@ -27,6 +28,7 @@ interface UploadQueueRepository{
     suspend fun getAllFileHashes(): List<String>
     suspend fun updateMediaItemStatusByHash(fileHashList: List<String>, status: UploadStatus)
     suspend fun updateMediaItemStatusByUri(uri: String, status: UploadStatus)
+    suspend fun prepareFilesForAutoUpload(status: UploadStatus, workerId: String)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -87,6 +89,7 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     override suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<MediaItemUriHash> =
         withContext(Dispatchers.IO){
             val mediaItemsUrisHash = mediaItemDao.getMediaItemsForWorker(uploadStatus, workerId)
+            Log.d("Mati", "Media items from repo: ${mediaItemsUrisHash.toString()}")
 //            val uriList = mutableListOf<MediaItemUriHash>()
 //            for (item in mediaItemsEntities){
 //                uriList.add(item.uri.toUri())
@@ -165,6 +168,15 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     ) {
         withContext(Dispatchers.IO){
             mediaItemDao.updateMediaItemStatusByUri(uri, status)
+        }
+    }
+
+    override suspend fun prepareFilesForAutoUpload(
+        status: UploadStatus,
+        workerId: String
+    ) {
+        withContext(Dispatchers.IO){
+            mediaItemDao.prepareFilesForAutoUpload(status, workerId)
         }
     }
 }

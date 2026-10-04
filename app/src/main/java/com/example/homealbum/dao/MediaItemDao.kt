@@ -27,6 +27,8 @@ interface MediaItemDao {
     fun getMediaItemsForWorker(status: UploadStatus, workerId: String): List<MediaItemUriHash>
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status, workerId = :workerId WHERE uri IN (:uriList)")
     fun prepareFilesForUpload(uriList: List<String>, status: UploadStatus, workerId: String)
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status, workerId = :workerId WHERE uploadStatus != 'UPLOADED'")
+    fun prepareFilesForAutoUpload(status: UploadStatus, workerId: String)
     @Query("SELECT * FROM MediaItemEntity WHERE workerId = :workerId")
     fun getMediaItemsByWorker(workerId: String): List<MediaItemEntity>
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri IN (:uriList) AND workerId = :workerId")

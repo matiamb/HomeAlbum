@@ -242,6 +242,18 @@ class GalleryViewModel(
             syncScheduler.scheduleSync()
         }
     }
+    fun scheduleAutoUpload(){
+        viewModelScope.launch {
+            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
+                return@launch
+            }
+            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleAutoUpload(workerId)
+            }
+        }
+    }
     private fun observeSyncStatus(){
         viewModelScope.launch {
             syncScheduler.syncStatus.collect {
@@ -338,7 +350,7 @@ private fun groupPhotosByDate(photos: List<MediaItem>): List<GalleryItem>{
             }
         }
 }
-private fun generateWorkerId(): String{
+fun generateWorkerId(): String{
     return UUID.randomUUID().toString()
 }
 data class ToastText(

@@ -9,8 +9,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +27,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okio.IOException
 
-class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val settingsRepository: SettingsRepository,
+    private val uploadQueueRepository: UploadQueueRepository,
+    private val uploadScheduler: UploadScheduler
+) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
@@ -130,7 +137,24 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     fun saveAutomaticBackup(isAutomaticBackup: Boolean){
         viewModelScope.launch {
             settingsRepository.saveAutomaticBackupEnabled(isAutomaticBackup)
+            if (isAutomaticBackup){
+                scheduleAutoUpload()
+            } else {
+                uploadScheduler.cancelAutoUpload()
+            }
         }
+    }
+    private suspend fun scheduleAutoUpload(){
+        //viewModelScope.launch {
+            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
+                return
+            }
+            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleAutoUpload(workerId)
+            }
+        //}
     }
 
     companion object {
@@ -138,7 +162,12 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             initializer {
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
                 val settingRepository = application.container.offlineSettingsRepository
-                SettingsViewModel(settingRepository)
+                val uploadQueueRepository = application.container.uploadQueueRepository
+                SettingsViewModel(
+                    settingsRepository = settingRepository,
+                    uploadQueueRepository = uploadQueueRepository,
+                    uploadScheduler = application.container.uploadScheduler
+                )
             }
         }
     }

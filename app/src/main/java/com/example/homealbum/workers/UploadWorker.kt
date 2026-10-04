@@ -16,6 +16,7 @@ import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.model.UploadStatus
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
@@ -23,21 +24,35 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class UploadWorker(context: Context, workerParams: WorkerParameters) : CoroutineWorker(context, workerParams){
     companion object {
-        const val WORKER_ID = ""
+        const val WORKER_ID = "worker_id"
         const val NOTIFICATION_ID = 1
+        const val JOB_TYPE = "job_type"
     }
     private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
+    private val settingsRepository = (context as HomeAlbumApplication).container.offlineSettingsRepository
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
         val workerId = inputData.getString(WORKER_ID) ?: return Result.failure()
-        val cleanupItems = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
-        val cleanupUris = mutableListOf<Uri>()
-        for ((uri) in cleanupItems){
-            cleanupUris.add(uri.toUri())
+        val jobType = inputData.getString(JOB_TYPE) ?: return Result.failure()
+        if (jobType == MANUAL_UPLOAD_TAG){
+            Log.d("Mati", "Manual upload detected")
+            val cleanupItems = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
+            val cleanupUris = mutableListOf<Uri>()
+            for ((uri) in cleanupItems){
+                cleanupUris.add(uri.toUri())
+            }
+            uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
         }
-        uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
+        if (jobType == AUTOMATIC_UPLOAD_TAG){
+            val userSettings = settingsRepository.userSettingsFlow.first()
+            if (!userSettings.isBackupEnabled && !userSettings.isAutomaticBackupEnabled){
+                return Result.failure()
+            }
+        }
+        Log.d("Mati", "Starting upload, workerId is: $workerId")
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
+        Log.d("Mati", uriList.toString())
 //        for (uriString in uriListString){
 //            uriList.add(uriString.toUri())
 //        }
