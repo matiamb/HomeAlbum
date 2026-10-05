@@ -28,8 +28,9 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         const val NOTIFICATION_ID = 1
         const val JOB_TYPE = "job_type"
     }
-    private val photoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
+    private val networkPhotoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
+    private val offlinePhotoRepository = (context as HomeAlbumApplication).container.offlinePhotoRepository
     private val settingsRepository = (context as HomeAlbumApplication).container.offlineSettingsRepository
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
@@ -46,8 +47,13 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         }
         if (jobType == AUTOMATIC_UPLOAD_TAG){
             val userSettings = settingsRepository.userSettingsFlow.first()
-            if (!userSettings.isBackupEnabled && !userSettings.isAutomaticBackupEnabled){
-                return Result.failure()
+            Log.d("Mati", userSettings.isBackupEnabled.toString() + " " + userSettings.isAutomaticBackupEnabled.toString())
+            if (!userSettings.isBackupEnabled || !userSettings.isAutomaticBackupEnabled){
+                return Result.success()
+            } else {
+                val updatedItemsList = offlinePhotoRepository.getLocalPhotos()
+                uploadQueueRepository.addMediaItemsToDb(updatedItemsList)
+                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
             }
         }
         Log.d("Mati", "Starting upload, workerId is: $workerId")
@@ -61,16 +67,16 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         var statusChanged = false
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         if (uriList.isEmpty()){
-            return Result.failure()
+            return Result.success()
         }
         for ((uri1, fileHash) in uriList){
             uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
             try {
                 val serverResponse = if (fileHash == null){
-                    photoRepository.uploadPhoto(uri1)
+                    networkPhotoRepository.uploadPhoto(uri1)
                 } else {
-                    photoRepository.uploadPhoto(uri1, fileHash)
+                    networkPhotoRepository.uploadPhoto(uri1, fileHash)
                 }
                 if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful){
                     //makeNotification(applicationContext, serverResponse.body()?.string())
