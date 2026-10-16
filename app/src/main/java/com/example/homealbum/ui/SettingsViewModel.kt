@@ -1,5 +1,6 @@
 package com.example.homealbum.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -13,6 +14,8 @@ import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.workers.AutoUploadCoordinatorScheduler
+import com.example.homealbum.workers.SyncScheduler
 import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,7 +33,8 @@ import okio.IOException
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val uploadQueueRepository: UploadQueueRepository,
-    private val uploadScheduler: UploadScheduler
+    //private val uploadScheduler: UploadScheduler,
+    private val syncUploadScheduler: AutoUploadCoordinatorScheduler
 ) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
@@ -140,19 +144,20 @@ class SettingsViewModel(
             if (isAutomaticBackup){
                 scheduleAutoUpload()
             } else {
-                uploadScheduler.cancelAutoUpload()
+                syncUploadScheduler.cancelCoordinator()
             }
         }
     }
     private suspend fun scheduleAutoUpload(){
         //viewModelScope.launch {
-            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
-                return
-            }
+//            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
+//                return
+//            }
             if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                uploadScheduler.scheduleAutoUpload(workerId)
+                //uploadScheduler.scheduleAutoUpload(workerId)
+                syncUploadScheduler.scheduleSyncUpload(workerId)
             }
         //}
     }
@@ -166,7 +171,8 @@ class SettingsViewModel(
                 SettingsViewModel(
                     settingsRepository = settingRepository,
                     uploadQueueRepository = uploadQueueRepository,
-                    uploadScheduler = application.container.uploadScheduler
+                    //uploadScheduler = application.container.uploadScheduler,
+                    syncUploadScheduler = application.container.syncUploadCoordinator
                 )
             }
         }

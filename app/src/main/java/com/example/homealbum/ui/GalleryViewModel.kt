@@ -250,7 +250,7 @@ class GalleryViewModel(
             if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                uploadScheduler.scheduleAutoUpload(workerId)
+                //uploadScheduler.scheduleAutoUpload(workerId)
             }
         }
     }

@@ -3,6 +3,7 @@ package com.example.homealbum.workers
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -13,8 +14,10 @@ import kotlinx.coroutines.flow.map
 interface SyncScheduler {
     val syncStatus: Flow<Boolean>
     fun scheduleSync()
+    fun cancelSync()
+    fun buildRequest(): OneTimeWorkRequest
 }
-private const val SYNC_TAG = "serverSync"
+const val SYNC_TAG = "serverSync"
 class WorkManagerSyncScheduler(
     private val workManager: WorkManager
 ) : SyncScheduler {
@@ -42,5 +45,20 @@ class WorkManagerSyncScheduler(
             existingWorkPolicy = ExistingWorkPolicy.KEEP,
             request = request
         )
+    }
+
+    override fun cancelSync() {
+        workManager.cancelAllWorkByTag(SYNC_TAG)
+    }
+
+    override fun buildRequest(): OneTimeWorkRequest {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+        return OneTimeWorkRequestBuilder<SyncWorker>()
+            .addTag(SYNC_TAG)
+            .setConstraints(constraints)
+            .build()
     }
 }

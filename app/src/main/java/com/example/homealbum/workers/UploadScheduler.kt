@@ -5,6 +5,7 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
@@ -27,10 +28,11 @@ interface UploadScheduler {
         workerId: String,
         allowUploadMobileData: Boolean
     )
-    fun scheduleAutoUpload(
-        workerId: String
-    )
+//    fun scheduleAutoUpload(
+//        workerId: String
+//    )
     fun cancelAutoUpload()
+    fun buildRequest(workerId: String): OneTimeWorkRequest
 }
 private const val UPLOAD_TAG = "upload"
 const val MANUAL_UPLOAD_TAG = "manual_multiple_upload"
@@ -111,13 +113,39 @@ class WorkManagerUploadScheduler(
         )
     }
 
-    override fun scheduleAutoUpload(workerId: String) {
+//    override fun scheduleAutoUpload(workerId: String) {
+//        val networkType = NetworkType.UNMETERED
+//        val constraints= Constraints.Builder()
+//            .setRequiredNetworkType(networkType)
+//            .setRequiresBatteryNotLow(true)
+//            .build()
+//        val request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.DAYS)
+//            .addTag(AUTOMATIC_UPLOAD_TAG)
+//            .setConstraints(constraints)
+//            .setInputData(
+//                workDataOf(UploadWorker.WORKER_ID to workerId,
+//                    UploadWorker.JOB_TYPE to AUTOMATIC_UPLOAD_TAG)
+//            )
+//            .build()
+//        workManager.cancelAllWorkByTag(MANUAL_UPLOAD_TAG)
+//        workManager.enqueueUniquePeriodicWork(
+//            uniqueWorkName = AUTOMATIC_UPLOAD_TAG,
+//            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.REPLACE,
+//            request = request
+//        )
+//    }
+
+    override fun cancelAutoUpload() {
+        workManager.cancelAllWorkByTag(AUTOMATIC_UPLOAD_TAG)
+    }
+
+    override fun buildRequest(workerId: String): OneTimeWorkRequest {
         val networkType = NetworkType.UNMETERED
         val constraints= Constraints.Builder()
             .setRequiredNetworkType(networkType)
             .setRequiresBatteryNotLow(true)
             .build()
-        val request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.DAYS)
+        return OneTimeWorkRequestBuilder<UploadWorker>()
             .addTag(AUTOMATIC_UPLOAD_TAG)
             .setConstraints(constraints)
             .setInputData(
@@ -125,15 +153,5 @@ class WorkManagerUploadScheduler(
                     UploadWorker.JOB_TYPE to AUTOMATIC_UPLOAD_TAG)
             )
             .build()
-        workManager.cancelAllWorkByTag(MANUAL_UPLOAD_TAG)
-        workManager.enqueueUniquePeriodicWork(
-            uniqueWorkName = AUTOMATIC_UPLOAD_TAG,
-            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.REPLACE,
-            request = request
-        )
-    }
-
-    override fun cancelAutoUpload() {
-        workManager.cancelAllWorkByTag(AUTOMATIC_UPLOAD_TAG)
     }
 }
