@@ -41,4 +41,6 @@ interface MediaItemDao {
     fun updateMediaItemStatusByFileHash(fileHash: List<String>, status: UploadStatus)
     @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uri = :uri")
     fun updateMediaItemStatusByUri(uri: String, status: UploadStatus)
+    @Query("UPDATE MediaItemEntity SET uploadStatus = :status WHERE uploadStatus = 'PENDING'")
+    fun restoreStatusAutoUploadCancelled(status: UploadStatus)
 }

@@ -29,6 +29,7 @@ interface UploadQueueRepository{
     suspend fun updateMediaItemStatusByHash(fileHashList: List<String>, status: UploadStatus)
     suspend fun updateMediaItemStatusByUri(uri: String, status: UploadStatus)
     suspend fun prepareFilesForAutoUpload(status: UploadStatus, workerId: String)
+    suspend fun restoreStatusAutoUploadCancelled(status: UploadStatus)
 }
 class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRepository{
     override val uploadInfo: Flow<List<FileUploadInfo>> =
@@ -177,6 +178,12 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     ) {
         withContext(Dispatchers.IO){
             mediaItemDao.prepareFilesForAutoUpload(status, workerId)
+        }
+    }
+
+    override suspend fun restoreStatusAutoUploadCancelled(status: UploadStatus) {
+        withContext(Dispatchers.IO){
+            mediaItemDao.restoreStatusAutoUploadCancelled(status)
         }
     }
 }

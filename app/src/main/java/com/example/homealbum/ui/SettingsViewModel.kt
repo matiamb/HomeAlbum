@@ -145,6 +145,7 @@ class SettingsViewModel(
                 scheduleAutoUpload()
             } else {
                 syncUploadScheduler.cancelCoordinator()
+                uploadQueueRepository.restoreStatusAutoUploadCancelled(UploadStatus.NOT_UPLOADED)
             }
         }
     }
