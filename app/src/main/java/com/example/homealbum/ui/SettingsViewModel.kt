@@ -33,7 +33,6 @@ import okio.IOException
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val uploadQueueRepository: UploadQueueRepository,
-    //private val uploadScheduler: UploadScheduler,
     private val syncUploadScheduler: AutoUploadCoordinatorScheduler
 ) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
@@ -150,17 +149,11 @@ class SettingsViewModel(
         }
     }
     private suspend fun scheduleAutoUpload(){
-        //viewModelScope.launch {
-//            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
-//                return
-//            }
             if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                //uploadScheduler.scheduleAutoUpload(workerId)
                 syncUploadScheduler.scheduleSyncUpload(workerId)
             }
-        //}
     }
 
     companion object {
@@ -172,7 +165,6 @@ class SettingsViewModel(
                 SettingsViewModel(
                     settingsRepository = settingRepository,
                     uploadQueueRepository = uploadQueueRepository,
-                    //uploadScheduler = application.container.uploadScheduler,
                     syncUploadScheduler = application.container.syncUploadCoordinator
                 )
             }

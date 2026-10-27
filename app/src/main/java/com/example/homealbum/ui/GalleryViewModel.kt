@@ -65,10 +65,6 @@ class GalleryViewModel(
             _galleryUiState.update { it.copy(isRefreshing = true) }
             try {
                 val photoList = photosRepo.getLocalPhotos()
-//                _galleryUiState.update { it.copy(
-//                    photoList = photoList,
-//                    galleryItems = groupPhotosByDate(photoList)
-//                    ) }
                 _rawPhotoList.value= photoList
                 uploadQueueRepository.addMediaItemsToDb(photoList)
             } catch (e: IOException){
@@ -121,7 +117,6 @@ class GalleryViewModel(
         uri: Uri
     ){
         viewModelScope.launch {
-            //val userSettings = settingsRepository.userSettingsFlow.first()
             if (userSettings.value.serverIp.isBlank()){
                 _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
                 return@launch
@@ -140,19 +135,12 @@ class GalleryViewModel(
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           //val userSettings = settingsRepository.userSettingsFlow.first()
            if (userSettings.value.serverIp.isBlank()){
                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
                return@launch
            }
            if (userSettings.value.isBackupEnabled){
                try {
-//                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-//                   if (serverResponse.isSuccessful){
-//                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
-//                   } else {
-//                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
-//                   }
                    syncScheduler.scheduleSync()
                } catch (e: IOException){
                    _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
@@ -161,7 +149,6 @@ class GalleryViewModel(
                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
        }
-       //syncMediaFiles()
     }
     fun checkServerConnection(){
         viewModelScope.launch {
@@ -250,7 +237,6 @@ class GalleryViewModel(
             if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
                 val workerId = generateWorkerId()
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                //uploadScheduler.scheduleAutoUpload(workerId)
             }
         }
     }
@@ -265,23 +251,6 @@ class GalleryViewModel(
     }
     private fun observeUpload(){
         viewModelScope.launch {
-//            uploadScheduler.uploadStatus.collect { status ->
-//                _galleryUiState.update { state ->
-//                    state.copy(uploadStatus = status)
-//                }
-//            }
-//            uploadQueueRepository.uploadInfo.collect { uploadInfos ->
-//                _galleryUiState.update { state ->
-//                    state.copy(
-//                        photoList = state.photoList.map { mediaItem ->
-//                            val uploadInfo = uploadInfos.find { it.uri == mediaItem.uri }
-//                            uploadInfo?.let {
-//                                mediaItem.copy(uploadStatus = uploadInfo.uploadStatus)
-//                            } ?: mediaItem
-//                        }
-//                    )
-//                }
-//            }
             combine(
                 _rawPhotoList,
                 uploadQueueRepository.uploadInfo

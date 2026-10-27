@@ -500,7 +500,6 @@ private fun BottomToolbarPreview(){
                 0L,
                 null,
                 UploadStatus.NOT_UPLOADED))
-        //uploadStatus = UploadStatus.UPLOADING
     )
     BottomToolbar(
         uiState = fakeUiState,

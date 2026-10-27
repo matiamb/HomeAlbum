@@ -59,9 +59,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         Log.d("Mati", "Starting upload, workerId is: $workerId")
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
         Log.d("Mati", uriList.toString())
-//        for (uriString in uriListString){
-//            uriList.add(uriString.toUri())
-//        }
         val tempTotalFiles = uriList.size
         var tempSuccessFiles = 0
         var statusChanged = false
@@ -79,7 +76,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                     networkPhotoRepository.uploadPhoto(uri1, fileHash)
                 }
                 if (serverResponse.serverResponse != null && serverResponse.serverResponse!!.isSuccessful){
-                    //makeNotification(applicationContext, serverResponse.body()?.string())
                     uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADED, fileHash = serverResponse.fileHash, workerId = workerId)
                     statusChanged = true
                     tempSuccessFiles++
@@ -105,10 +101,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 }
             }
         }
-    //catch (e: Exception){
-//            makeNotification(applicationContext, "")
-//            Result.failure()
-//        }
         val totalFiles = uploadQueueRepository.getMediaItemsByWorker(workerId)
         val successFiles = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADED, workerId)
         Log.d("Mati", "${successFiles.size} of ${totalFiles.size} uploaded")

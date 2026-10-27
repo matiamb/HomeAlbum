@@ -60,8 +60,6 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
             for(uri in uriSet){
                 uriSetString.add(uri.toString())
             }
-            //val mediaItemEntity = mediaItemDao.getMediaItemByUri(uri.toString())
-            //Log.d("Mati", mediaItemEntity.toString())
                 mediaItemDao.deleteMediaItem(uriSetString)
         }
     }
@@ -90,11 +88,6 @@ class LocalUploadQueueRepository(val mediaItemDao: MediaItemDao) : UploadQueueRe
     override suspend fun getPendingUploads(uploadStatus: UploadStatus, workerId: String): List<MediaItemUriHash> =
         withContext(Dispatchers.IO){
             val mediaItemsUrisHash = mediaItemDao.getMediaItemsForWorker(uploadStatus, workerId)
-            Log.d("Mati", "Media items from repo: ${mediaItemsUrisHash.toString()}")
-//            val uriList = mutableListOf<MediaItemUriHash>()
-//            for (item in mediaItemsEntities){
-//                uriList.add(item.uri.toUri())
-//            }
             return@withContext mediaItemsUrisHash
         }
     override suspend fun prepareFilesForUpload(
