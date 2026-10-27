@@ -133,6 +133,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         val builder = NotificationCompat.Builder(context, "Upload_notifications")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(context.getString(R.string.upload_status_notification_title))
+            .setOnlyAlertOnce(true)
             .setContentText(message)
 
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
