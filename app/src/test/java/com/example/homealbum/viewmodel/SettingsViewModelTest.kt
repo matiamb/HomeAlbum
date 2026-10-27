@@ -1,13 +1,13 @@
 package com.example.homealbum.viewmodel
 
-import androidx.compose.runtime.collectAsState
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.model.DiskSpace
 import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
-import com.example.homealbum.ui.SettingsUiState
 import com.example.homealbum.ui.SettingsViewModel
+import com.example.homealbum.utils.FakeCoordinatorScheduler
+import com.example.homealbum.utils.FakeUploadQueueRepo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -52,7 +52,13 @@ class FakeSettingsRepository : SettingsRepository{
     var shouldThrowException = false
 
     private var _userSettingsFlow = MutableStateFlow(
-        UserSettings("", "", true, false)
+        UserSettings(
+            "",
+            "",
+            isBackupEnabled = true,
+            allowUploadMobileData = false,
+            isAutomaticBackupEnabled = false
+        )
     )
     var diskSpaceItem = DiskSpace(totalSpaceBytes = 100.0, availableSpaceBytes = 30.0, usedSpaceBytes = 70.0)
 
@@ -95,8 +101,17 @@ class FakeSettingsRepository : SettingsRepository{
         }
     }
 
+    override suspend fun saveAutomaticBackupEnabled(isAutomaticBackupEnabled: Boolean) {
+        TODO("Not yet implemented")
+    }
+
     fun setConnectionResult(result: Boolean){
         connectionSuccessful = result
+    }
+    fun setServerIp(ip: String){
+        _userSettingsFlow.value = _userSettingsFlow.value.copy(
+            serverIp = ip
+        )
     }
 }
 
@@ -105,11 +120,19 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
     private lateinit var fakeSettingsRepository: FakeSettingsRepository
     private lateinit var settingsViewModelTest: SettingsViewModel
+    private lateinit var fakeUploadQueueRepository: FakeUploadQueueRepo
+    private lateinit var fakeCoordinatorScheduler: FakeCoordinatorScheduler
 
     @Before
     fun setup(){
         fakeSettingsRepository = FakeSettingsRepository()
-        settingsViewModelTest = SettingsViewModel(settingsRepository = fakeSettingsRepository)
+        fakeUploadQueueRepository = FakeUploadQueueRepo()
+        fakeCoordinatorScheduler = FakeCoordinatorScheduler()
+        settingsViewModelTest = SettingsViewModel(
+            settingsRepository = fakeSettingsRepository,
+            uploadQueueRepository = fakeUploadQueueRepository,
+            syncUploadScheduler = fakeCoordinatorScheduler
+        )
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test

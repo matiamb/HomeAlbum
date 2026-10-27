@@ -2,12 +2,17 @@ package com.example.homealbum.viewmodel
 
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
+import androidx.work.OneTimeWorkRequest
 import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadResult
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
+import com.example.homealbum.utils.FakeCoordinatorScheduler
 import com.example.homealbum.utils.FakePhotoRepository
+import com.example.homealbum.utils.FakeSyncScheduler
+import com.example.homealbum.utils.FakeUploadQueueRepo
 import com.example.homealbum.workers.DeleteScheduler
 import com.example.homealbum.workers.UploadScheduler
 import io.mockk.mockk
@@ -45,7 +50,10 @@ class FakeNetworkRepository() : ImageScreenRepository{
         }
     }
 
-    override suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody> {
+    override suspend fun uploadPhoto(
+        fileUriString: String,
+        fileHash: String?
+    ): UploadResult {
         TODO("Not yet implemented")
     }
 
@@ -57,23 +65,35 @@ class FakeNetworkRepository() : ImageScreenRepository{
         TODO("Not yet implemented")
     }
 
+    override suspend fun syncMediaFiles(fileHashList: List<String>): List<String> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun getFileHash(uri: Uri): String? {
+        TODO("Not yet implemented")
+    }
+
 }
 class FakeUploadScheduler() : UploadScheduler {
     var scheduledUri: Uri? = null
     var scheduledUriSet: Set<Uri> = emptySet()
     var fakeAllowUploadMobilData = false
-    override fun scheduleUpload(uri: Uri, allowUploadMobileData: Boolean) {
-        scheduledUri = uri
-    }
-
-    override fun scheduleMultipleUpload(
+    override fun scheduleUpload(
         uriList: Set<Uri>,
+        workerId: String,
         allowUploadMobileData: Boolean
     ) {
         scheduledUriSet = uriList
+        fakeAllowUploadMobilData = allowUploadMobileData
     }
 
-    override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.NOT_UPLOADED)
+    override fun cancelAutoUpload() {
+        TODO("Not yet implemented")
+    }
+
+    override fun buildRequest(workerId: String): OneTimeWorkRequest {
+        TODO("Not yet implemented")
+    }
 
 }
 
@@ -94,6 +114,8 @@ class GalleryViewModelTest {
     private lateinit var galleryViewModelTest: GalleryViewModel
     private lateinit var fakeUploadScheduler: FakeUploadScheduler
     private lateinit var fakeDeleteScheduler: FakeDeleteScheduler
+    private lateinit var fakeUploadQueueRepo: FakeUploadQueueRepo
+    private lateinit var fakeSyncScheduler: FakeSyncScheduler
     @Before
     fun setup(){
         fakePhotoRepository = FakePhotoRepository()
@@ -101,34 +123,37 @@ class GalleryViewModelTest {
         fakeSettingsRepository = FakeSettingsRepository()
         fakeUploadScheduler = FakeUploadScheduler()
         fakeDeleteScheduler = FakeDeleteScheduler()
+        fakeUploadQueueRepo = FakeUploadQueueRepo()
+        fakeSyncScheduler = FakeSyncScheduler()
         galleryViewModelTest = GalleryViewModel(
             photosRepo = fakePhotoRepository,
-            networkPhotoRepository = fakeNetworkRepository,
             settingsRepository = fakeSettingsRepository,
             uploadScheduler = fakeUploadScheduler,
-            deleteScheduler = fakeDeleteScheduler
+            deleteScheduler = fakeDeleteScheduler,
+            uploadQueueRepository = fakeUploadQueueRepo,
+            syncScheduler = fakeSyncScheduler
         )
     }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun checkIfPhotoExists_backupEnabledAndPhotoExists_emitsCorrectToast(){
-        runTest {
-            fakeNetworkRepository.photoExists = true
-            fakeSettingsRepository.saveBackupEnabled(true)
-            galleryViewModelTest.triggerSync(mockk<Uri>())
-            val toastFlow = backgroundScope.launch {
-                val toast = galleryViewModelTest.toastMessage.first()
-                assertEquals(R.string.photo_exists_on_the_server_msg, toast.message)
-            }
-            advanceUntilIdle()
-        }
-    }
+//    @OptIn(ExperimentalCoroutinesApi::class)
+//    @Test
+//    fun checkIfPhotoExists_backupEnabledAndPhotoExists_emitsCorrectToast(){
+//        runTest {
+//            fakeNetworkRepository.photoExists = true
+//            fakeSettingsRepository.saveBackupEnabled(true)
+//            galleryViewModelTest.triggerSync()
+//            val toastFlow = backgroundScope.launch {
+//                val toast = galleryViewModelTest.toastMessage.first()
+//                assertEquals(R.string.photo_exists_on_the_server_msg, toast.message)
+//            }
+//            advanceUntilIdle()
+//        }
+//    }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun checkIfPhotoExists_backupDisabled_emitsCorrectToast(){
         runTest {
             fakeSettingsRepository.saveBackupEnabled(false)
-            galleryViewModelTest.triggerSync(mockk<Uri>())
+            galleryViewModelTest.triggerSync()
             val toastFlow = backgroundScope.launch {
                 val toast = galleryViewModelTest.toastMessage.first()
                 assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
@@ -136,20 +161,20 @@ class GalleryViewModelTest {
             advanceUntilIdle()
         }
     }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun checkIfPhotoExists_backupEnabledAndNotExists_emitsCorrectToast(){
-        runTest {
-            fakeNetworkRepository.photoExists = false
-            fakeSettingsRepository.saveBackupEnabled(true)
-            galleryViewModelTest.triggerSync(mockk<Uri>())
-            val toastFlow = backgroundScope.launch {
-                val toast = galleryViewModelTest.toastMessage.first()
-                assertEquals(R.string.file_not_found_in_server_msg, toast.message)
-            }
-            advanceUntilIdle()
-        }
-    }
+//    @OptIn(ExperimentalCoroutinesApi::class)
+//    @Test
+//    fun checkIfPhotoExists_backupEnabledAndNotExists_emitsCorrectToast(){
+//        runTest {
+//            fakeNetworkRepository.photoExists = false
+//            fakeSettingsRepository.saveBackupEnabled(true)
+//            galleryViewModelTest.triggerSync()
+//            val toastFlow = backgroundScope.launch {
+//                val toast = galleryViewModelTest.toastMessage.first()
+//                assertEquals(R.string.file_not_found_in_server_msg, toast.message)
+//            }
+//            advanceUntilIdle()
+//        }
+//    }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun loadPhotos_repoLoadsPhotos_galleryUiStateUpdatedWithPhotos(){
@@ -196,9 +221,10 @@ class GalleryViewModelTest {
         runTest {
             val uri = mockk<Uri>()
             fakeSettingsRepository.saveBackupEnabled(true)
+            fakeSettingsRepository.setServerIp("testIp")
             galleryViewModelTest.uploadPhoto(uri)
             advanceUntilIdle()
-            assertEquals(uri, fakeUploadScheduler.scheduledUri)
+            assertTrue( fakeUploadScheduler.scheduledUriSet.contains(uri))
         }
     }
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -213,7 +239,7 @@ class GalleryViewModelTest {
                 assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
             }
             advanceUntilIdle()
-            assertFalse(uri == fakeUploadScheduler.scheduledUri)
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(uri))
         }
     }
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -255,40 +281,6 @@ class GalleryViewModelTest {
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun startMultipleUpload_backupEnabledAndMultipleSelectionSet_uploadSchedulerCalled(){
-        runTest {
-            fakeSettingsRepository.saveBackupEnabled(true)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media3.uri)
-            assertTrue(galleryViewModelTest.galleryUiState.value.multipleSelectionSet.isNotEmpty())
-            galleryViewModelTest.startMultipleUpload()
-            advanceUntilIdle()
-            assertEquals(
-                setOf(
-                    fakePhotoRepository.media1.uri,
-                    fakePhotoRepository.media2.uri,
-                    fakePhotoRepository.media3.uri),
-                fakeUploadScheduler.scheduledUriSet
-            )
-            assertTrue(galleryViewModelTest.galleryUiState.value.multipleSelectionSet.isEmpty())
-        }
-    }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun startMultipleUpload_backupDisabled_uploadSchedulerNotCalled(){
-        runTest {
-            fakeSettingsRepository.saveBackupEnabled(false)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
-            galleryViewModelTest.multipleSelection(fakePhotoRepository.media3.uri)
-            galleryViewModelTest.startMultipleUpload()
-            advanceUntilIdle()
-            assertTrue(fakeUploadScheduler.scheduledUriSet.isEmpty())
-        }
-    }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
     fun requestTrashPhoto_repoReceivesFilesAndCallbackReceivesIntent(){
         runTest {
             fakePhotoRepository.failToDelete = false
@@ -321,7 +313,7 @@ class GalleryViewModelTest {
             advanceUntilIdle()
             galleryViewModelTest.removeThrashedPhotoFromUi(setToDelete)
             assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
-            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
+            assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media2))
         }
     }
 }
