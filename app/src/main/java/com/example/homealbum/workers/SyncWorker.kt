@@ -1,7 +1,6 @@
 package com.example.homealbum.workers
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
@@ -15,7 +14,6 @@ class SyncWorker(context: Context, workerParams: WorkerParameters) : CoroutineWo
     override suspend fun doWork(): Result {
         try {
             val uriList = uploadQueueRepository.getAllUris()
-            Log.d("Mati", uriList.toString())
             uriList.forEach { uri ->
                 val hash = photoRepository.getFileHash(uri)
                 if (hash != null){

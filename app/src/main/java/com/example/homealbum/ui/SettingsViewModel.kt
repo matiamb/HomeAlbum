@@ -1,6 +1,5 @@
 package com.example.homealbum.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -15,9 +14,6 @@ import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.AutoUploadCoordinatorScheduler
-import com.example.homealbum.workers.SyncScheduler
-import com.example.homealbum.workers.UploadScheduler
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

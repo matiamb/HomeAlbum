@@ -133,8 +133,7 @@ fun ImageScreen(
                               },
             onBackFabClicked = onBackFabClicked,
             checkPhotoIsUploaded = {
-                val currentUri = uiState.value.photoList[pagerState.currentPage].uri
-                galleryViewModel.checkIfPhotoExists(currentUri)
+                galleryViewModel.triggerSync()
             },
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri

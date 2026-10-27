@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import com.example.homealbum.R
-import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
 import com.example.homealbum.data.UploadQueueRepository
@@ -41,7 +40,6 @@ import java.util.UUID
 
 class GalleryViewModel(
     private val photosRepo: PhotoRepository,
-    private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
     private val uploadQueueRepository: UploadQueueRepository,
     private val uploadScheduler: UploadScheduler,
@@ -133,7 +131,7 @@ class GalleryViewModel(
             }
         }
     }
-   fun checkIfPhotoExists(uri: Uri){
+   fun triggerSync(){
        viewModelScope.launch {
            if (userSettings.value.serverIp.isBlank()){
                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
@@ -224,22 +222,6 @@ class GalleryViewModel(
             uploadQueueRepository.deleteMediaItemFromDb(uriSet)
         }
     }
-    fun syncMediaFiles(){
-        viewModelScope.launch {
-            syncScheduler.scheduleSync()
-        }
-    }
-    fun scheduleAutoUpload(){
-        viewModelScope.launch {
-            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
-                return@launch
-            }
-            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
-                val workerId = generateWorkerId()
-                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-            }
-        }
-    }
     private fun observeSyncStatus(){
         viewModelScope.launch {
             syncScheduler.syncStatus.collect {
@@ -281,12 +263,10 @@ class GalleryViewModel(
             initializer {
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
                 val photoRepository = application.container.offlinePhotoRepository
-                val networkPhotoRepository = application.container.networkPhotoRepository
                 val settingsRepository = application.container.offlineSettingsRepository
                 val uploadQueueRepository = application.container.uploadQueueRepository
                 GalleryViewModel(
                     photoRepository,
-                    networkPhotoRepository,
                     settingsRepository,
                     uploadQueueRepository,
                     application.container.uploadScheduler,

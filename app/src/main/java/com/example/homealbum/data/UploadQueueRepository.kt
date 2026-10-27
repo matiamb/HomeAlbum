@@ -1,7 +1,6 @@
 package com.example.homealbum.data
 
 import android.net.Uri
-import android.util.Log
 import androidx.core.net.toUri
 import com.example.homealbum.dao.MediaItemDao
 import com.example.homealbum.model.FileUploadInfo

@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -37,7 +36,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         val workerId = inputData.getString(WORKER_ID) ?: return Result.failure()
         val jobType = inputData.getString(JOB_TYPE) ?: return Result.failure()
         if (jobType == MANUAL_UPLOAD_TAG){
-            Log.d("Mati", "Manual upload detected")
             val cleanupItems = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
             val cleanupUris = mutableListOf<Uri>()
             for ((uri) in cleanupItems){
@@ -47,7 +45,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         }
         if (jobType == AUTOMATIC_UPLOAD_TAG){
             val userSettings = settingsRepository.userSettingsFlow.first()
-            Log.d("Mati", userSettings.isBackupEnabled.toString() + " " + userSettings.isAutomaticBackupEnabled.toString())
             if (!userSettings.isBackupEnabled || !userSettings.isAutomaticBackupEnabled){
                 return Result.success()
             } else {
@@ -56,9 +53,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
             }
         }
-        Log.d("Mati", "Starting upload, workerId is: $workerId")
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
-        Log.d("Mati", uriList.toString())
         val tempTotalFiles = uriList.size
         var tempSuccessFiles = 0
         var statusChanged = false
@@ -103,7 +98,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         }
         val totalFiles = uploadQueueRepository.getMediaItemsByWorker(workerId)
         val successFiles = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADED, workerId)
-        Log.d("Mati", "${successFiles.size} of ${totalFiles.size} uploaded")
         return if(totalFiles.isNotEmpty() && successFiles.size.toDouble()/totalFiles.size.toDouble() >= 0.5){
             makeNotification(context = applicationContext, message = "${successFiles.size} of ${totalFiles.size} uploaded")
             Result.success()

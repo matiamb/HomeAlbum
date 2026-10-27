@@ -3,7 +3,6 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.core.net.toUri
 import com.example.homealbum.model.FileToUpload
 import com.example.homealbum.model.UploadResult
@@ -21,8 +20,6 @@ import okio.BufferedSink
 import okio.source
 import retrofit2.Response
 import java.security.MessageDigest
-import java.util.Collections.emptyList
-import java.util.Collections.emptySet
 
 interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
@@ -152,7 +149,6 @@ class NetworkPhotoRepository(
         val endpoint = "http://$dynamicUrl/api/v1/media/sync"
         val syncRequest = SyncRequest(fileHashList)
         val serverResponse = serverApiService.syncFiles(endpoint, syncRequest)
-        Log.d("Mati", serverResponse.missingHashes.toString())
         serverResponse.missingHashes
     }
     private fun getFileNameFromUri(
@@ -180,7 +176,6 @@ class NetworkPhotoRepository(
     override suspend fun getFileHash(uri: Uri): String?{
         return withContext(Dispatchers.IO){
             try {
-                Log.d("Mati", "Calculating Hash")
                 val digest = MessageDigest.getInstance("SHA-256")
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val buffer = ByteArray(8 * 1024)

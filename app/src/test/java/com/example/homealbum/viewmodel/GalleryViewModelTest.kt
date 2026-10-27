@@ -115,7 +115,7 @@ class GalleryViewModelTest {
         runTest {
             fakeNetworkRepository.photoExists = true
             fakeSettingsRepository.saveBackupEnabled(true)
-            galleryViewModelTest.checkIfPhotoExists(mockk<Uri>())
+            galleryViewModelTest.triggerSync(mockk<Uri>())
             val toastFlow = backgroundScope.launch {
                 val toast = galleryViewModelTest.toastMessage.first()
                 assertEquals(R.string.photo_exists_on_the_server_msg, toast.message)
@@ -128,7 +128,7 @@ class GalleryViewModelTest {
     fun checkIfPhotoExists_backupDisabled_emitsCorrectToast(){
         runTest {
             fakeSettingsRepository.saveBackupEnabled(false)
-            galleryViewModelTest.checkIfPhotoExists(mockk<Uri>())
+            galleryViewModelTest.triggerSync(mockk<Uri>())
             val toastFlow = backgroundScope.launch {
                 val toast = galleryViewModelTest.toastMessage.first()
                 assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
@@ -142,7 +142,7 @@ class GalleryViewModelTest {
         runTest {
             fakeNetworkRepository.photoExists = false
             fakeSettingsRepository.saveBackupEnabled(true)
-            galleryViewModelTest.checkIfPhotoExists(mockk<Uri>())
+            galleryViewModelTest.triggerSync(mockk<Uri>())
             val toastFlow = backgroundScope.launch {
                 val toast = galleryViewModelTest.toastMessage.first()
                 assertEquals(R.string.file_not_found_in_server_msg, toast.message)
