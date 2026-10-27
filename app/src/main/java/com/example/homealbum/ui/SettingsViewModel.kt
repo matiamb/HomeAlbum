@@ -1,5 +1,6 @@
 package com.example.homealbum.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -9,8 +10,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
+import com.example.homealbum.workers.AutoUploadCoordinatorScheduler
+import com.example.homealbum.workers.SyncScheduler
+import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +30,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okio.IOException
 
-class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val settingsRepository: SettingsRepository,
+    private val uploadQueueRepository: UploadQueueRepository,
+    //private val uploadScheduler: UploadScheduler,
+    private val syncUploadScheduler: AutoUploadCoordinatorScheduler
+) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false)
+        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false, isAutomaticBackupEnabled = false)
     )
     private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
@@ -103,7 +114,7 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             settingsRepository.saveBackupEnabled(isBackupEnabled)
         }
     }
-    fun saveMobileDataUpload(allowUpload : Boolean){
+    fun saveMobileDataUpload(allowUpload: Boolean){
         viewModelScope.launch {
             settingsRepository.saveMobileDataUpload(allowUpload = allowUpload)
         }
@@ -127,13 +138,43 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             }
         }
     }
+    fun saveAutomaticBackup(isAutomaticBackup: Boolean){
+        viewModelScope.launch {
+            settingsRepository.saveAutomaticBackupEnabled(isAutomaticBackup)
+            if (isAutomaticBackup){
+                scheduleAutoUpload()
+            } else {
+                syncUploadScheduler.cancelCoordinator()
+                uploadQueueRepository.restoreStatusAutoUploadCancelled(UploadStatus.NOT_UPLOADED)
+            }
+        }
+    }
+    private suspend fun scheduleAutoUpload(){
+        //viewModelScope.launch {
+//            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
+//                return
+//            }
+            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                //uploadScheduler.scheduleAutoUpload(workerId)
+                syncUploadScheduler.scheduleSyncUpload(workerId)
+            }
+        //}
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
                 val settingRepository = application.container.offlineSettingsRepository
-                SettingsViewModel(settingRepository)
+                val uploadQueueRepository = application.container.uploadQueueRepository
+                SettingsViewModel(
+                    settingsRepository = settingRepository,
+                    uploadQueueRepository = uploadQueueRepository,
+                    //uploadScheduler = application.container.uploadScheduler,
+                    syncUploadScheduler = application.container.syncUploadCoordinator
+                )
             }
         }
     }

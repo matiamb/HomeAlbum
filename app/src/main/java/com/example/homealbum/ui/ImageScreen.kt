@@ -32,13 +32,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -57,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -97,11 +98,13 @@ fun ImageScreen(
             if (photoCount == 1){
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
+                galleryViewModel.deleteMediaFileFromDb(setOf(currentUri))
                 onLastPhotoDeleted()
                 galleryViewModel.loadPhotos()
             } else {
                 galleryViewModel.removeThrashedPhotoFromUi(setOf(currentUri))
                 galleryViewModel.removeMediaFromServer(setOf(currentUri))
+                galleryViewModel.deleteMediaFileFromDb(setOf(currentUri))
                 galleryViewModel.loadPhotos()
             }
         }
@@ -136,12 +139,13 @@ fun ImageScreen(
             onUploadClicked = {
                 val currentUri = uiState.value.photoList[pagerState.currentPage].uri
                 galleryViewModel.uploadPhoto(currentUri)
-            }
+            },
+            pagerState = pagerState
         ) },
         modifier = modifier
     ) { paddingValues ->
         ImageRoll(
-            uiState,
+            uiState.value,
             pagerState,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
@@ -165,7 +169,7 @@ fun ImageScreen(
 
 @Composable
 fun ImageRoll(
-    uiState: State<GalleryUiState>,
+    uiState: GalleryUiState,
     pagerState: PagerState,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -193,7 +197,7 @@ fun ImageRoll(
                     }
                 }
         ) { page ->
-            val mediaItem = uiState.value.photoList[page]
+            val mediaItem = uiState.photoList[page]
             val isCurrentPage = pagerState.settledPage == page
             val animatedScale by animateFloatAsState(targetValue = scale, label = "scale")
             val animatedOffset by animateOffsetAsState(targetValue = offset, label = "offset")
@@ -273,6 +277,7 @@ fun BottomToolbar(
     onBackFabClicked: () -> Unit,
     onUploadClicked: () -> Unit,
     checkPhotoIsUploaded: () -> Unit,
+    pagerState: PagerState,
     modifier: Modifier = Modifier
 ){
     BottomAppBar(
@@ -303,31 +308,56 @@ fun BottomToolbar(
             BaseTooltip(
                 tooltipText = stringResource(R.string.check_if_file_is_in_the_server_icon_desc),
                 composable = {
-                    IconButton(onClick = checkPhotoIsUploaded) {
-                        Icon(
-                            painterResource(R.drawable.outline_cloud_alert_24),
-                            stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
-                        )
+                    IconButton(
+                        onClick = checkPhotoIsUploaded,
+                        enabled = !uiState.syncInProgress
+                    ) {
+                        if (uiState.syncInProgress){
+                            CircularProgressIndicator(modifier = Modifier.width(32.dp))
+                        } else {
+                            Icon(
+                                painterResource(R.drawable.outline_cloud_sync_24),
+                                stringResource(R.string.check_if_file_is_in_the_server_icon_desc)
+                            )
+                        }
                     }
                 }
             )
-
             IconButton(onClick = {}, enabled = false) {
-                when (uiState.uploadStatus) {
-                    UploadStatus.UPLOADING -> {
+                val currentFile = uiState.photoList.getOrNull(pagerState.currentPage)
+                when (currentFile?.uploadStatus) {
+                     UploadStatus.UPLOADING-> {
                         CircularProgressIndicator(modifier = Modifier.width(32.dp))
                     }
-                    UploadStatus.SCHEDULED -> {
+                    UploadStatus.PENDING -> {
                         Icon(
                             painterResource(R.drawable.outline_schedule_24),
                             contentDescription = ""
                         )
                     }
-                    UploadStatus.IDLE -> {
-
+                    UploadStatus.NOT_UPLOADED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_off_24),
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.primaryContainer
+                        )
                     }
+                    UploadStatus.FAILED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_alert_24),
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    UploadStatus.UPLOADED -> {
+                        Icon(
+                            painterResource(R.drawable.outline_cloud_done_24),
+                            contentDescription = "",
+                            tint = Color(0xff2eef68)
+                        )
+                    }
+                    null -> {}
                 }
-
             }
         },
         floatingActionButton = {
@@ -463,7 +493,14 @@ private fun sharePhoto(context: Context, uri: Uri){
 @Composable
 private fun BottomToolbarPreview(){
     val fakeUiState = GalleryUiState(
-        uploadStatus = UploadStatus.UPLOADING
+        photoList = listOf(
+            com.example.homealbum.model.MediaItem(
+                "content://media/external/images/media/74".toUri(),
+                false,
+                0L,
+                null,
+                UploadStatus.NOT_UPLOADED))
+        //uploadStatus = UploadStatus.UPLOADING
     )
     BottomToolbar(
         uiState = fakeUiState,
@@ -471,7 +508,8 @@ private fun BottomToolbarPreview(){
         onSharedClicked = {},
         onBackFabClicked = {},
         onUploadClicked = {},
-        checkPhotoIsUploaded = {}
+        checkPhotoIsUploaded = {},
+        pagerState = rememberPagerState(0, 0f, { 3 })
     )
 }
 

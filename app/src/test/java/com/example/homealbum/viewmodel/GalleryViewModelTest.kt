@@ -73,7 +73,7 @@ class FakeUploadScheduler() : UploadScheduler {
         scheduledUriSet = uriList
     }
 
-    override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.IDLE)
+    override val uploadStatus: Flow<UploadStatus> = flowOf(UploadStatus.NOT_UPLOADED)
 
 }
 

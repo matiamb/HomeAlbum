@@ -3,7 +3,10 @@ package com.example.homealbum.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
+import androidx.core.net.toUri
 import com.example.homealbum.model.FileToUpload
+import com.example.homealbum.model.UploadResult
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -23,9 +26,11 @@ import java.util.Collections.emptySet
 
 interface ImageScreenRepository {
     suspend fun checkIfPhotoExist(uri: Uri): Response<ResponseBody>
-    suspend fun uploadPhoto(fileUri: Uri): Response<ResponseBody>
+    suspend fun uploadPhoto(fileUriString: String, fileHash: String? = null): UploadResult
     suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody>
     suspend fun uploadMultipleFiles(uriList: List<Uri>): Response<ResponseBody>
+    suspend fun syncMediaFiles(fileHashList: List<String>): List<String>
+    suspend fun getFileHash(uri: Uri): String?
 }
 
 class NetworkPhotoRepository(
@@ -44,12 +49,14 @@ class NetworkPhotoRepository(
     }
 
     override suspend fun uploadPhoto(
-        fileUri: Uri
-    ): Response<ResponseBody> = withContext(Dispatchers.IO){
+        fileUriString: String,
+        fileHash: String?
+    ): UploadResult = withContext(Dispatchers.IO){
+        val fileUri = fileUriString.toUri()
         val settings = offlineSettingsRepository.userSettingsFlow.first()
         val serverIp = settings.serverIp
         val folderName = settings.serverFolderName
-        val fileHash = getFileHash(fileUri)
+        val fileHash = fileHash ?: getFileHash(fileUri)
         if (serverIp.isBlank()){
             throw IllegalArgumentException("Please enter a valid ip")
         }
@@ -72,13 +79,14 @@ class NetworkPhotoRepository(
 
         }
         val filePart = MultipartBody.Part.createFormData("file", fileName, mediaRequestBody)
-
-        serverApiService.uploadPhoto(
+        val uploadResult = UploadResult(fileHash, null)
+        uploadResult.serverResponse = serverApiService.uploadPhoto(
             file = filePart,
             savedUrl = endpoint,
             fileHash = fileHash,
             folderName = folderRequestBody
         )
+        uploadResult
     }
 
     override suspend fun deleteMediaFile(uriList: List<Uri>): Response<ResponseBody> = withContext(Dispatchers.IO) {
@@ -137,6 +145,16 @@ class NetworkPhotoRepository(
         )
     }
 
+    override suspend fun syncMediaFiles(fileHashList: List<String>): List<String> = withContext(Dispatchers.IO){
+        val settings = offlineSettingsRepository.userSettingsFlow.first()
+        val serverIp = settings.serverIp
+        val dynamicUrl = serverIp.trimEnd('/')
+        val endpoint = "http://$dynamicUrl/api/v1/media/sync"
+        val syncRequest = SyncRequest(fileHashList)
+        val serverResponse = serverApiService.syncFiles(endpoint, syncRequest)
+        Log.d("Mati", serverResponse.missingHashes.toString())
+        serverResponse.missingHashes
+    }
     private fun getFileNameFromUri(
         context: Context,
         uri: Uri
@@ -159,9 +177,10 @@ class NetworkPhotoRepository(
         }
         return null
     }
-    private suspend fun getFileHash(uri: Uri): String?{
+    override suspend fun getFileHash(uri: Uri): String?{
         return withContext(Dispatchers.IO){
             try {
+                Log.d("Mati", "Calculating Hash")
                 val digest = MessageDigest.getInstance("SHA-256")
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val buffer = ByteArray(8 * 1024)

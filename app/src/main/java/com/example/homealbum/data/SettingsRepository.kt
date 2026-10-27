@@ -23,6 +23,7 @@ interface SettingsRepository {
     suspend fun checkServerConnection(serverIp: String): Response<ResponseBody>
     suspend fun saveMobileDataUpload(allowUpload : Boolean)
     suspend fun checkServerDiskSpace(serverIp: String): DiskSpace
+    suspend fun saveAutomaticBackupEnabled(isAutomaticBackupEnabled: Boolean)
 }
 
 class OfflineSettingsRepository(
@@ -34,6 +35,7 @@ class OfflineSettingsRepository(
         val FOLDER_NAME = stringPreferencesKey(name = "folder_name")
         val IS_BACKUP_ENABLED = booleanPreferencesKey(name = "is_backup_enabled")
         val ALLOW_UPLOAD_MOBILE_DATA = booleanPreferencesKey(name = "allow_upload_mobile_data")
+        val IS_AUTOMATIC_BACKUP_ENABLED = booleanPreferencesKey(name = "is_automatic_backup_enabled")
     }
 
     override val userSettingsFlow: Flow<UserSettings> = dataStore.data.map { preferences ->
@@ -41,7 +43,8 @@ class OfflineSettingsRepository(
             serverIp = preferences[PreferencesKeys.SERVER_IP] ?: "",
             serverFolderName = preferences[PreferencesKeys.FOLDER_NAME] ?: "",
             isBackupEnabled = preferences[PreferencesKeys.IS_BACKUP_ENABLED] ?: false,
-            allowUploadMobileData = preferences[PreferencesKeys.ALLOW_UPLOAD_MOBILE_DATA] ?: false
+            allowUploadMobileData = preferences[PreferencesKeys.ALLOW_UPLOAD_MOBILE_DATA] ?: false,
+            isAutomaticBackupEnabled = preferences[PreferencesKeys.IS_AUTOMATIC_BACKUP_ENABLED] ?: false
         )
     }
 
@@ -82,5 +85,11 @@ class OfflineSettingsRepository(
                 availableSpaceBytes = availableSpaceGb,
                 usedSpaceBytes = usedSpaceGb
             )
+    }
+
+    override suspend fun saveAutomaticBackupEnabled(isAutomaticBackupEnabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_AUTOMATIC_BACKUP_ENABLED] = isAutomaticBackupEnabled
+        }
     }
 }

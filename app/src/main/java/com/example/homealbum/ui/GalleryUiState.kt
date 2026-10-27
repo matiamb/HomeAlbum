@@ -10,7 +10,7 @@ data class GalleryUiState(
     val photoList: List<MediaItem> = listOf(),
     val galleryItems: List<GalleryItem> = listOf(),
     val isRefreshing: Boolean = false,
-    val uploadStatus: UploadStatus = UploadStatus.IDLE,
+    val syncInProgress: Boolean = false,
     val serverConnectionStatus: ServerConnectionStatus = ServerConnectionStatus.FAILED,
     val multipleSelectionSet: Set<Uri> = emptySet()
 )

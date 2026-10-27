@@ -1,6 +1,5 @@
 package com.example.homealbum.ui
 
-import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.result.IntentSenderRequest
 import androidx.annotation.StringRes
@@ -21,26 +20,33 @@ import com.example.homealbum.R
 import com.example.homealbum.data.ImageScreenRepository
 import com.example.homealbum.data.PhotoRepository
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.GalleryItem
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.workers.DeleteScheduler
+import com.example.homealbum.workers.SyncScheduler
 import com.example.homealbum.workers.UploadScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
+import java.util.UUID
 
 class GalleryViewModel(
     private val photosRepo: PhotoRepository,
     private val networkPhotoRepository: ImageScreenRepository,
     private val settingsRepository: SettingsRepository,
+    private val uploadQueueRepository: UploadQueueRepository,
     private val uploadScheduler: UploadScheduler,
-    private val deleteScheduler: DeleteScheduler
+    private val deleteScheduler: DeleteScheduler,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
 
     private val _galleryUiState = MutableStateFlow(GalleryUiState())
@@ -51,17 +57,20 @@ class GalleryViewModel(
     val userSettings = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = UserSettings("", "", false, false)
+        initialValue = UserSettings("", "", false, false, false)
     )
+    private val _rawPhotoList = MutableStateFlow<List<MediaItem>>(emptyList())
     fun loadPhotos(){
         viewModelScope.launch {
             _galleryUiState.update { it.copy(isRefreshing = true) }
             try {
                 val photoList = photosRepo.getLocalPhotos()
-                _galleryUiState.update { it.copy(
-                    photoList = photoList,
-                    galleryItems = groupPhotosByDate(photoList)
-                    ) }
+//                _galleryUiState.update { it.copy(
+//                    photoList = photoList,
+//                    galleryItems = groupPhotosByDate(photoList)
+//                    ) }
+                _rawPhotoList.value= photoList
+                uploadQueueRepository.addMediaItemsToDb(photoList)
             } catch (e: IOException){
                 _toastMessage.emit(ToastText(message =  R.string.failed_to_load_local_photos_msg))
             } catch (e: SecurityException){
@@ -104,19 +113,26 @@ class GalleryViewModel(
         }
     }
     fun removeThrashedPhotoFromUi(uriSet: Set<Uri>){
-        for (uri in uriSet){
-            _galleryUiState.update { state ->
-                state.copy(photoList = state.photoList.filter { it.uri != uri })
-            }
+        _rawPhotoList.update { currentList ->
+            currentList.filter { it.uri !in uriSet }
         }
     }
     fun uploadPhoto(
         uri: Uri
     ){
         viewModelScope.launch {
-            val userSettings = settingsRepository.userSettingsFlow.first()
-            if (userSettings.isBackupEnabled){
-                uploadScheduler.scheduleUpload(uri, userSettings.allowUploadMobileData)
+            //val userSettings = settingsRepository.userSettingsFlow.first()
+            if (userSettings.value.serverIp.isBlank()){
+                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+                return@launch
+            }
+            if (userSettings.value.isBackupEnabled){
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForUpload(listOf(uri), UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleUpload(setOf(uri), workerId, userSettings.value.allowUploadMobileData)
+                _galleryUiState.update {
+                    it.copy()
+                }
             } else {
                 _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
             }
@@ -124,14 +140,20 @@ class GalleryViewModel(
     }
    fun checkIfPhotoExists(uri: Uri){
        viewModelScope.launch {
-           if (settingsRepository.userSettingsFlow.first().isBackupEnabled){
+           //val userSettings = settingsRepository.userSettingsFlow.first()
+           if (userSettings.value.serverIp.isBlank()){
+               _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+               return@launch
+           }
+           if (userSettings.value.isBackupEnabled){
                try {
-                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
-                   if (serverResponse.isSuccessful){
-                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
-                   } else {
-                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
-                   }
+//                   val serverResponse = networkPhotoRepository.checkIfPhotoExist(uri)
+//                   if (serverResponse.isSuccessful){
+//                       _toastMessage.emit(ToastText(message = R.string.photo_exists_on_the_server_msg))
+//                   } else {
+//                       _toastMessage.emit(ToastText(message = R.string.file_not_found_in_server_msg))
+//                   }
+                   syncScheduler.scheduleSync()
                } catch (e: IOException){
                    _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
                }
@@ -139,6 +161,7 @@ class GalleryViewModel(
                _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
            }
        }
+       //syncMediaFiles()
     }
     fun checkServerConnection(){
         viewModelScope.launch {
@@ -188,9 +211,17 @@ class GalleryViewModel(
     }
     fun startMultipleUpload(){
         viewModelScope.launch {
+            if (userSettings.value.serverIp.isBlank()){
+                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+                return@launch
+            }
             if (galleryUiState.value.multipleSelectionSet.isNotEmpty() && userSettings.value.isBackupEnabled){
-                uploadScheduler.scheduleMultipleUpload(
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForUpload(galleryUiState.value.multipleSelectionSet.toList(),
+                    UploadStatus.PENDING, workerId)
+                uploadScheduler.scheduleUpload(
                     uriList = galleryUiState.value.multipleSelectionSet,
+                    workerId = workerId,
                     allowUploadMobileData = userSettings.value.allowUploadMobileData
                 )
                 clearMultipleSelectionSet()
@@ -201,16 +232,74 @@ class GalleryViewModel(
             }
         }
     }
+    fun deleteMediaFileFromDb(uriSet: Set<Uri>){
+        viewModelScope.launch {
+            uploadQueueRepository.deleteMediaItemFromDb(uriSet)
+        }
+    }
+    fun syncMediaFiles(){
+        viewModelScope.launch {
+            syncScheduler.scheduleSync()
+        }
+    }
+    fun scheduleAutoUpload(){
+        viewModelScope.launch {
+            if (userSettings.value.isBackupEnabled && userSettings.value.serverIp.isBlank()){
+                return@launch
+            }
+            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
+                val workerId = generateWorkerId()
+                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                //uploadScheduler.scheduleAutoUpload(workerId)
+            }
+        }
+    }
+    private fun observeSyncStatus(){
+        viewModelScope.launch {
+            syncScheduler.syncStatus.collect {
+                _galleryUiState.update { state ->
+                    state.copy(syncInProgress = it)
+                }
+            }
+        }
+    }
     private fun observeUpload(){
         viewModelScope.launch {
-            uploadScheduler.uploadStatus.collect { status ->
+//            uploadScheduler.uploadStatus.collect { status ->
+//                _galleryUiState.update { state ->
+//                    state.copy(uploadStatus = status)
+//                }
+//            }
+//            uploadQueueRepository.uploadInfo.collect { uploadInfos ->
+//                _galleryUiState.update { state ->
+//                    state.copy(
+//                        photoList = state.photoList.map { mediaItem ->
+//                            val uploadInfo = uploadInfos.find { it.uri == mediaItem.uri }
+//                            uploadInfo?.let {
+//                                mediaItem.copy(uploadStatus = uploadInfo.uploadStatus)
+//                            } ?: mediaItem
+//                        }
+//                    )
+//                }
+//            }
+            combine(
+                _rawPhotoList,
+                uploadQueueRepository.uploadInfo
+            ){ photos, uploadInfos ->
+                val statusMap = uploadInfos.associate { it.uri to it.uploadStatus }
+                photos.map { photo ->
+                    photo.copy(uploadStatus = statusMap[photo.uri] ?: UploadStatus.NOT_UPLOADED)
+                }
+            }.collect { updatedFiles ->
                 _galleryUiState.update { state ->
-                    state.copy(uploadStatus = status)
+                    state.copy(photoList = updatedFiles,
+                        galleryItems = groupPhotosByDate(updatedFiles))
                 }
             }
         }
     }
     init {
+        observeSyncStatus()
         observeUpload()
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }
@@ -225,12 +314,15 @@ class GalleryViewModel(
                 val photoRepository = application.container.offlinePhotoRepository
                 val networkPhotoRepository = application.container.networkPhotoRepository
                 val settingsRepository = application.container.offlineSettingsRepository
+                val uploadQueueRepository = application.container.uploadQueueRepository
                 GalleryViewModel(
                     photoRepository,
                     networkPhotoRepository,
                     settingsRepository,
+                    uploadQueueRepository,
                     application.container.uploadScheduler,
-                    application.container.deleteScheduler
+                    application.container.deleteScheduler,
+                    application.container.syncScheduler
                     )
             }
         }
@@ -257,6 +349,9 @@ private fun groupPhotosByDate(photos: List<MediaItem>): List<GalleryItem>{
                 )
             }
         }
+}
+fun generateWorkerId(): String{
+    return UUID.randomUUID().toString()
 }
 data class ToastText(
     @StringRes val message: Int = 0
