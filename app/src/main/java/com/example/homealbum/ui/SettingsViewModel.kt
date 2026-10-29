@@ -29,13 +29,15 @@ import okio.IOException
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val uploadQueueRepository: UploadQueueRepository,
-    private val syncUploadScheduler: AutoUploadCoordinatorScheduler
+    private val coordinatorUploadScheduler: AutoUploadCoordinatorScheduler
 ) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false, isAutomaticBackupEnabled = false)
     )
+    private suspend fun getCurrentUserSettings(): UserSettings =
+        settingsRepository.userSettingsFlow.first()
     private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
     private var _settingsUiState = MutableStateFlow(SettingsUiState())
@@ -83,11 +85,12 @@ class SettingsViewModel(
     }
     fun checkServerConnection(){
         viewModelScope.launch {
+            val userSettings = getCurrentUserSettings()
             try {
                 _settingsUiState.update {
                     it.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
                 }
-                val serverResponse = settingsRepository.checkServerConnection(userSettings.value.serverIp)
+                val serverResponse = settingsRepository.checkServerConnection(userSettings.serverIp)
                 if (serverResponse.isSuccessful){
                     _settingsUiState.update {
                         it.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
@@ -107,6 +110,9 @@ class SettingsViewModel(
     fun saveBackupEnabled(isBackupEnabled: Boolean){
         viewModelScope.launch {
             settingsRepository.saveBackupEnabled(isBackupEnabled)
+            if(!isBackupEnabled){
+                saveAutomaticBackup(false)
+            }
         }
     }
     fun saveMobileDataUpload(allowUpload: Boolean){
@@ -116,11 +122,12 @@ class SettingsViewModel(
     }
     fun checkServerDiskSpace(){
         viewModelScope.launch {
+            val userSettings = getCurrentUserSettings()
             try {
                 _settingsUiState.update {
                     it.copy(isChecking = true)
                 }
-                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.value.serverIp)
+                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.serverIp)
                 _settingsUiState.update {
                     it.copy(isChecking = false, serverDiskSpace = serverDiskSpace)
                 }
@@ -139,17 +146,18 @@ class SettingsViewModel(
             if (isAutomaticBackup){
                 scheduleAutoUpload()
             } else {
-                syncUploadScheduler.cancelCoordinator()
+                coordinatorUploadScheduler.cancelCoordinator()
                 uploadQueueRepository.restoreStatusAutoUploadCancelled(UploadStatus.NOT_UPLOADED)
             }
         }
     }
     private suspend fun scheduleAutoUpload(){
-            if (userSettings.value.isBackupEnabled && userSettings.value.isAutomaticBackupEnabled){
-                val workerId = generateWorkerId()
-                uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                syncUploadScheduler.scheduleSyncUpload(workerId)
-            }
+        val userSettings = getCurrentUserSettings()
+        if (userSettings.isBackupEnabled && userSettings.isAutomaticBackupEnabled){
+            val workerId = generateWorkerId()
+            uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+            coordinatorUploadScheduler.scheduleSyncUpload(workerId)
+        }
     }
 
     companion object {
@@ -161,7 +169,7 @@ class SettingsViewModel(
                 SettingsViewModel(
                     settingsRepository = settingRepository,
                     uploadQueueRepository = uploadQueueRepository,
-                    syncUploadScheduler = application.container.syncUploadCoordinator
+                    coordinatorUploadScheduler = application.container.syncUploadCoordinator
                 )
             }
         }

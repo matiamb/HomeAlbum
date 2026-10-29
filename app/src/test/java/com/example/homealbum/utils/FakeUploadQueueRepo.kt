@@ -99,10 +99,10 @@ class FakeUploadQueueRepo : UploadQueueRepository {
         status: UploadStatus,
         workerId: String
     ) {
-        TODO("Not yet implemented")
+
     }
 
     override suspend fun restoreStatusAutoUploadCancelled(status: UploadStatus) {
-        TODO("Not yet implemented")
+
     }
 }

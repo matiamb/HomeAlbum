@@ -105,9 +105,6 @@ fun SettingsScreen(
                     settingsUiState = settingsUiState.value,
                     onBackupSwitched = { value ->
                         settingsViewModel.saveBackupEnabled(value)
-                        if (!value){
-                            settingsViewModel.saveAutomaticBackup(false)
-                        }
                     },
                     onMobileDataSwitched = { value ->
                         settingsViewModel.saveMobileDataUpload(value)

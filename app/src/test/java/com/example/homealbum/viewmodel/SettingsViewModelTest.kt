@@ -102,7 +102,9 @@ class FakeSettingsRepository : SettingsRepository{
     }
 
     override suspend fun saveAutomaticBackupEnabled(isAutomaticBackupEnabled: Boolean) {
-        TODO("Not yet implemented")
+        _userSettingsFlow.value = _userSettingsFlow.value.copy(
+            isAutomaticBackupEnabled = isAutomaticBackupEnabled
+        )
     }
 
     fun setConnectionResult(result: Boolean){
@@ -131,7 +133,7 @@ class SettingsViewModelTest {
         settingsViewModelTest = SettingsViewModel(
             settingsRepository = fakeSettingsRepository,
             uploadQueueRepository = fakeUploadQueueRepository,
-            syncUploadScheduler = fakeCoordinatorScheduler
+            coordinatorUploadScheduler = fakeCoordinatorScheduler
         )
     }
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -150,6 +152,20 @@ class SettingsViewModelTest {
             val serverSettings = fakeSettingsRepository.userSettingsFlow.first()
             assertEquals(serverIpToSave, serverSettings.serverIp)
             assertEquals(folderNameToSave, serverSettings.serverFolderName)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun saveServerSettings_serverConnectionFailed_uiStateUpdatesAndIsCheckingFalse(){
+        runTest {
+            val serverIpToSave = "100.0.0.1"
+            val folderNameToSave = "Test Folder"
+            fakeSettingsRepository.setConnectionResult(false)
+            settingsViewModelTest.saveServerSettings(ip = serverIpToSave , folderName = folderNameToSave)
+            advanceUntilIdle()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
+            assertEquals(ServerConnectionStatus.FAILED, settingsUiState.serverConnectionStatus)
+            assertFalse(settingsUiState.isChecking)
         }
     }
 
@@ -221,6 +237,50 @@ class SettingsViewModelTest {
             val settingsUiState = settingsViewModelTest.settingsUiState.value
             assertFalse(settingsUiState.isChecking)
             assertEquals(DiskSpace(0.0, 0.0, 0.0), settingsUiState.serverDiskSpace)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun saveAutomaticBackup_enableAutomaticBackup_coordinatorScheduled(){
+        runTest {
+            fakeCoordinatorScheduler.coordinatorScheduled = false
+            fakeSettingsRepository.saveBackupEnabled(true)
+            settingsViewModelTest.saveAutomaticBackup(true)
+            advanceUntilIdle()
+            assertEquals(true, fakeCoordinatorScheduler.coordinatorScheduled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun saveAutomaticBackup_disableAutomaticBackup_coordinatorCancelled(){
+        runTest {
+            fakeCoordinatorScheduler.coordinatorCancelled = false
+            fakeSettingsRepository.saveBackupEnabled(true)
+            settingsViewModelTest.saveAutomaticBackup(false)
+            advanceUntilIdle()
+            assertEquals(true, fakeCoordinatorScheduler.coordinatorCancelled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun saveAutomaticBackup_automaticBackupEnabledAndBackupDisabled_coordinatorNotScheduled(){
+        runTest {
+            fakeCoordinatorScheduler.coordinatorScheduled = false
+            fakeSettingsRepository.saveBackupEnabled(false)
+            settingsViewModelTest.saveAutomaticBackup(true)
+            advanceUntilIdle()
+            assertEquals(false, fakeCoordinatorScheduler.coordinatorScheduled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun saveBackupEnabled_backupDisabledWhileAutomaticBackupEnabled_coordinatorCancellationCalled(){
+        runTest {
+            fakeCoordinatorScheduler.coordinatorCancelled = false
+            fakeSettingsRepository.saveAutomaticBackupEnabled(true)
+            settingsViewModelTest.saveBackupEnabled(false)
+            advanceUntilIdle()
+            assertEquals(true, fakeCoordinatorScheduler.coordinatorCancelled)
         }
     }
 }
