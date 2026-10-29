@@ -6,11 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 class FakeSyncScheduler : SyncScheduler {
+    var syncSchedulerCalled = false
     override val syncStatus: Flow<Boolean>
         get() = flowOf(false)
 
     override fun scheduleSync() {
-        TODO("Not yet implemented")
+        syncSchedulerCalled = true
     }
 
     override fun cancelSync() {

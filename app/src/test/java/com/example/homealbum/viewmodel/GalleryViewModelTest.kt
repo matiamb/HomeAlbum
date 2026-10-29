@@ -11,6 +11,7 @@ import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.ui.GalleryViewModel
 import com.example.homealbum.utils.FakeCoordinatorScheduler
 import com.example.homealbum.utils.FakePhotoRepository
+import com.example.homealbum.utils.FakeSettingsRepository
 import com.example.homealbum.utils.FakeSyncScheduler
 import com.example.homealbum.utils.FakeUploadQueueRepo
 import com.example.homealbum.workers.DeleteScheduler
@@ -66,7 +67,10 @@ class FakeNetworkRepository() : ImageScreenRepository{
     }
 
     override suspend fun syncMediaFiles(fileHashList: List<String>): List<String> {
-        TODO("Not yet implemented")
+        if (throwException){
+            throw IOException()
+        }
+        return emptyList()
     }
 
     override suspend fun getFileHash(uri: Uri): String? {
@@ -83,6 +87,7 @@ class FakeUploadScheduler() : UploadScheduler {
         workerId: String,
         allowUploadMobileData: Boolean
     ) {
+        scheduledUriSet = emptySet()
         scheduledUriSet = uriList
         fakeAllowUploadMobilData = allowUploadMobileData
     }
@@ -134,47 +139,6 @@ class GalleryViewModelTest {
             syncScheduler = fakeSyncScheduler
         )
     }
-//    @OptIn(ExperimentalCoroutinesApi::class)
-//    @Test
-//    fun checkIfPhotoExists_backupEnabledAndPhotoExists_emitsCorrectToast(){
-//        runTest {
-//            fakeNetworkRepository.photoExists = true
-//            fakeSettingsRepository.saveBackupEnabled(true)
-//            galleryViewModelTest.triggerSync()
-//            val toastFlow = backgroundScope.launch {
-//                val toast = galleryViewModelTest.toastMessage.first()
-//                assertEquals(R.string.photo_exists_on_the_server_msg, toast.message)
-//            }
-//            advanceUntilIdle()
-//        }
-//    }
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun checkIfPhotoExists_backupDisabled_emitsCorrectToast(){
-        runTest {
-            fakeSettingsRepository.saveBackupEnabled(false)
-            galleryViewModelTest.triggerSync()
-            val toastFlow = backgroundScope.launch {
-                val toast = galleryViewModelTest.toastMessage.first()
-                assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
-            }
-            advanceUntilIdle()
-        }
-    }
-//    @OptIn(ExperimentalCoroutinesApi::class)
-//    @Test
-//    fun checkIfPhotoExists_backupEnabledAndNotExists_emitsCorrectToast(){
-//        runTest {
-//            fakeNetworkRepository.photoExists = false
-//            fakeSettingsRepository.saveBackupEnabled(true)
-//            galleryViewModelTest.triggerSync()
-//            val toastFlow = backgroundScope.launch {
-//                val toast = galleryViewModelTest.toastMessage.first()
-//                assertEquals(R.string.file_not_found_in_server_msg, toast.message)
-//            }
-//            advanceUntilIdle()
-//        }
-//    }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun loadPhotos_repoLoadsPhotos_galleryUiStateUpdatedWithPhotos(){
@@ -237,6 +201,21 @@ class GalleryViewModelTest {
             val toastFlow = backgroundScope.launch {
                 val toast = galleryViewModelTest.toastMessage.first()
                 assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
+            }
+            advanceUntilIdle()
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(uri))
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun uploadPhoto_serverIpNotSet_expectedToastIsShownAndUploadSchedulerIsNotCalled(){
+        runTest {
+            val uri = mockk<Uri>()
+            fakeSettingsRepository.setServerIp("")
+            galleryViewModelTest.uploadPhoto(uri)
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.msg_server_ip_not_set, toast.message)
             }
             advanceUntilIdle()
             assertFalse(fakeUploadScheduler.scheduledUriSet.contains(uri))
@@ -314,6 +293,107 @@ class GalleryViewModelTest {
             galleryViewModelTest.removeThrashedPhotoFromUi(setToDelete)
             assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media1))
             assertFalse(galleryViewModelTest.galleryUiState.value.photoList.contains(fakePhotoRepository.media2))
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun triggerSync_serverIpNotSet_expectedToastIsShownAndSyncSchedulerNotCalled(){
+        runTest {
+            fakeSettingsRepository.setServerIp("")
+            galleryViewModelTest.triggerSync()
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.msg_server_ip_not_set, toast.message)
+            }
+            advanceUntilIdle()
+            assertFalse(fakeSyncScheduler.syncSchedulerCalled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun triggerSync_serverIpSet_syncSchedulerCalled(){
+        runTest {
+            fakeSettingsRepository.setServerIp("testIp")
+            fakeSettingsRepository.saveBackupEnabled(true)
+            galleryViewModelTest.triggerSync()
+            advanceUntilIdle()
+            assertTrue(fakeSyncScheduler.syncSchedulerCalled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun triggerSync_serverIpSetAndLocalBackupDisabled_expectedToastIsShownAndSyncSchedulerNotCalled(){
+        runTest {
+            fakeSettingsRepository.setServerIp("testIp")
+            fakeSettingsRepository.saveBackupEnabled(false)
+            galleryViewModelTest.triggerSync()
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.local_backup_is_disabled_msg, toast.message)
+            }
+            advanceUntilIdle()
+            assertFalse(fakeSyncScheduler.syncSchedulerCalled)
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun triggerSync_throwsException_expectedToastShown(){
+        runTest {
+            fakeNetworkRepository.throwException = true
+            galleryViewModelTest.triggerSync()
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.connection_error_msg, toast.message)
+            }
+            advanceUntilIdle()
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun startMultipleUpload_serverIpNotSet_expectedToastIsShownAndUploadSchedulerIsNotCalled(){
+        runTest{
+            fakeSettingsRepository.setServerIp("")
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.startMultipleUpload()
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.msg_server_ip_not_set, toast.message)
+            }
+            advanceUntilIdle()
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media1.uri))
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media2.uri))
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun startMultipleUpload_serverIpSet_uploadSchedulerCalled(){
+        runTest {
+            fakeSettingsRepository.setServerIp("testIp")
+            fakeSettingsRepository.saveBackupEnabled(true)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.startMultipleUpload()
+            advanceUntilIdle()
+            assertTrue(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media1.uri))
+            assertTrue(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media2.uri))
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun startMultipleUpload_serverIpSetAndLocalBackupDisabled_expectedToastIsShownAndUploadSchedulerIsNotCalled(){
+        runTest {
+            fakeSettingsRepository.setServerIp("testIp")
+            fakeSettingsRepository.saveBackupEnabled(false)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media1.uri)
+            galleryViewModelTest.multipleSelection(fakePhotoRepository.media2.uri)
+            galleryViewModelTest.startMultipleUpload()
+            val toastFlow = backgroundScope.launch {
+                val toast = galleryViewModelTest.toastMessage.first()
+                assertEquals(R.string.msg_server_ip_not_set, toast.message)
+            }
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media1.uri))
+            assertFalse(fakeUploadScheduler.scheduledUriSet.contains(fakePhotoRepository.media2.uri))
         }
     }
 }
