@@ -4,5 +4,6 @@ data class UserSettings(
     val serverIp: String,
     val serverFolderName: String,
     val isBackupEnabled: Boolean,
-    val allowUploadMobileData: Boolean
+    val allowUploadMobileData: Boolean,
+    val isAutomaticBackupEnabled: Boolean
 )

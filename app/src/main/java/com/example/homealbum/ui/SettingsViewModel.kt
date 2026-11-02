@@ -9,9 +9,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
 import com.example.homealbum.data.SettingsRepository
+import com.example.homealbum.data.UploadQueueRepository
 import com.example.homealbum.model.ServerConnectionStatus
+import com.example.homealbum.model.UploadStatus
 import com.example.homealbum.model.UserSettings
-import kotlinx.coroutines.delay
+import com.example.homealbum.workers.AutoUploadCoordinatorScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,12 +26,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okio.IOException
 
-class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
+class SettingsViewModel(
+    private val settingsRepository: SettingsRepository,
+    private val uploadQueueRepository: UploadQueueRepository,
+    private val coordinatorUploadScheduler: AutoUploadCoordinatorScheduler
+) : ViewModel() {
     val userSettings: StateFlow<UserSettings> = settingsRepository.userSettingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false)
+        initialValue = UserSettings(serverIp = "", serverFolderName = "", isBackupEnabled = false, allowUploadMobileData = false, isAutomaticBackupEnabled = false)
     )
+    private suspend fun getCurrentUserSettings(): UserSettings =
+        settingsRepository.userSettingsFlow.first()
     private var _toastMessage = MutableSharedFlow<ToastText>()
     val toastMessage = _toastMessage.asSharedFlow()
     private var _settingsUiState = MutableStateFlow(SettingsUiState())
@@ -77,11 +85,12 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     }
     fun checkServerConnection(){
         viewModelScope.launch {
+            val userSettings = getCurrentUserSettings()
             try {
                 _settingsUiState.update {
                     it.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
                 }
-                val serverResponse = settingsRepository.checkServerConnection(userSettings.value.serverIp)
+                val serverResponse = settingsRepository.checkServerConnection(userSettings.serverIp)
                 if (serverResponse.isSuccessful){
                     _settingsUiState.update {
                         it.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
@@ -101,20 +110,24 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
     fun saveBackupEnabled(isBackupEnabled: Boolean){
         viewModelScope.launch {
             settingsRepository.saveBackupEnabled(isBackupEnabled)
+            if(!isBackupEnabled){
+                saveAutomaticBackup(false)
+            }
         }
     }
-    fun saveMobileDataUpload(allowUpload : Boolean){
+    fun saveMobileDataUpload(allowUpload: Boolean){
         viewModelScope.launch {
             settingsRepository.saveMobileDataUpload(allowUpload = allowUpload)
         }
     }
     fun checkServerDiskSpace(){
         viewModelScope.launch {
+            val userSettings = getCurrentUserSettings()
             try {
                 _settingsUiState.update {
                     it.copy(isChecking = true)
                 }
-                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.value.serverIp)
+                val serverDiskSpace = settingsRepository.checkServerDiskSpace(userSettings.serverIp)
                 _settingsUiState.update {
                     it.copy(isChecking = false, serverDiskSpace = serverDiskSpace)
                 }
@@ -127,13 +140,37 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
             }
         }
     }
+    fun saveAutomaticBackup(isAutomaticBackup: Boolean){
+        viewModelScope.launch {
+            settingsRepository.saveAutomaticBackupEnabled(isAutomaticBackup)
+            if (isAutomaticBackup){
+                scheduleAutoUpload()
+            } else {
+                coordinatorUploadScheduler.cancelCoordinator()
+                uploadQueueRepository.restoreStatusAutoUploadCancelled(UploadStatus.NOT_UPLOADED)
+            }
+        }
+    }
+    private suspend fun scheduleAutoUpload(){
+        val userSettings = getCurrentUserSettings()
+        if (userSettings.isBackupEnabled && userSettings.isAutomaticBackupEnabled){
+            val workerId = generateWorkerId()
+            uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+            coordinatorUploadScheduler.scheduleSyncUpload(workerId)
+        }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as HomeAlbumApplication)
                 val settingRepository = application.container.offlineSettingsRepository
-                SettingsViewModel(settingRepository)
+                val uploadQueueRepository = application.container.uploadQueueRepository
+                SettingsViewModel(
+                    settingsRepository = settingRepository,
+                    uploadQueueRepository = uploadQueueRepository,
+                    coordinatorUploadScheduler = application.container.syncUploadCoordinator
+                )
             }
         }
     }

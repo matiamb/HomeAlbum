@@ -13,10 +13,11 @@ Beta: HomeAlbum is currently in early development and may contain bugs or incomp
 - Upload photos and videos to your private server
 - Background uploads using Android WorkManager
 - Network and battery constraints for background uploads
+- Periodic automatic uploads.
 
-<img width="250" height="505" alt="Screenshot_20260828_154758_HomeAlbum" src="https://github.com/user-attachments/assets/49cc8c03-3c3f-4a1d-b269-7fba96195c60" />
-<img width="250" height="505" alt="Screenshot_20260828_154833_HomeAlbum" src="https://github.com/user-attachments/assets/2881ae94-5d9a-4fd9-a013-55f55b3cfac0" />
-<img width="250" height="505" alt="Screenshot_20260814_112853_HomeAlbum" src="https://github.com/user-attachments/assets/fa0d9b01-0c94-4af0-95fa-709f0cea1923" />
+<img width="250" height="505" alt="Screenshot_20261030_101422_HomeAlbum" src="https://github.com/user-attachments/assets/21553800-2629-4e92-b315-2d5f22a5cd81" />
+<img width="250" height="505" alt="Screenshot_20261030_101447_HomeAlbum" src="https://github.com/user-attachments/assets/53db3fad-8b21-4cee-8374-4f92b0154bd9" />
+<img width="250" height="505" alt="Screenshot_20261030_101528_HomeAlbum" src="https://github.com/user-attachments/assets/2559a76a-0fcf-4ad5-9d6f-7f5ff05fd481" />
 
 ## 📱 Requirements
 
@@ -69,8 +70,8 @@ or when using Tailscale:
 HomeAlbum is currently a beta project.
 Known limitations include:
 
-- Media file server existence checks are currently performed one file at a time
-- Pending uploads may not always resume correctly after losing network connectivity
+- Automatic uploads may have inconsistent timing, since they are managed by the system.
+- Upload notifications may not display status correctly.
 
 These limitations are expected to change during development.
 
@@ -109,6 +110,6 @@ Please remove personal or sensitive information before attaching logs or screens
 
 HomeAlbum is currently under active development.
 
-Current release: v0.3.0-beta.1
+Current release: v0.4.0-beta.1
 
 The API and application behavior may change while the project remains in beta.
