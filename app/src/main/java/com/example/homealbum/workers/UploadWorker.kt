@@ -59,6 +59,8 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
         var statusChanged = false
         makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         if (uriList.isEmpty()){
+            makeNotification(applicationContext,
+                applicationContext.getString(R.string.all_up_to_date_autoupload_worker_notification))
             return Result.success()
         }
         for ((uri1, fileHash) in uriList){
