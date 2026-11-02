@@ -6,18 +6,24 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.homealbum.model.DiskSpace
+import com.example.homealbum.model.ServerConnectionStatus
 import com.example.homealbum.model.UserSettings
 import com.example.homealbum.network.ServerApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
 import retrofit2.Response
+import java.io.IOException
 import kotlin.math.round
 
 interface SettingsRepository {
     val userSettingsFlow: Flow<UserSettings>
+    val serverConnectionFlow: StateFlow<ServerConnectionStatus>
     suspend fun saveServerSettings(ip: String, folderName: String)
     suspend fun saveBackupEnabled(isBackupEnabled: Boolean)
     suspend fun checkServerConnection(serverIp: String): Response<ResponseBody>
@@ -47,6 +53,8 @@ class OfflineSettingsRepository(
             isAutomaticBackupEnabled = preferences[PreferencesKeys.IS_AUTOMATIC_BACKUP_ENABLED] ?: false
         )
     }
+    private val _serverConnectionFlow = MutableStateFlow(ServerConnectionStatus.FAILED)
+    override val serverConnectionFlow: StateFlow<ServerConnectionStatus> = _serverConnectionFlow.asStateFlow()
 
     override suspend fun saveServerSettings(ip: String, folderName: String) {
         dataStore.edit { preferences ->
@@ -63,8 +71,17 @@ class OfflineSettingsRepository(
 
     override suspend fun checkServerConnection(serverIp: String): Response<ResponseBody> =
         withContext(Dispatchers.IO){
+            _serverConnectionFlow.value = ServerConnectionStatus.CHECKING
             val endpoint = "http://$serverIp/api/v1/media/ping"
-            serverApiService.checkServerConnection(endpoint)
+            try {
+                val response = serverApiService.checkServerConnection(endpoint)
+                _serverConnectionFlow.value = if (response.isSuccessful) ServerConnectionStatus.CONNECTED
+                else ServerConnectionStatus.FAILED
+                response
+            } catch (e: IOException){
+                _serverConnectionFlow.value = ServerConnectionStatus.FAILED
+                throw e
+            }
         }
 
     override suspend fun saveMobileDataUpload(allowUpload: Boolean) {

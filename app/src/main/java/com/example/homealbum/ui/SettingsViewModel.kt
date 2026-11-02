@@ -44,30 +44,20 @@ class SettingsViewModel(
     val settingsUiState = _settingsUiState.asStateFlow()
     fun saveServerSettings(ip: String, folderName: String){
         viewModelScope.launch {
-            settingsRepository.saveServerSettings(ip, folderName)
             try {
                 _settingsUiState.update {
-                    it.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING, isChecking = true)
+                    it.copy(
+                        isChecking = true)
                 }
                 settingsRepository.saveServerSettings(ip, folderName)
                 val serverResponse = settingsRepository.checkServerConnection(ip)
                 if (serverResponse.isSuccessful){
-                    _settingsUiState.update {
-                        it.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED,
-                            isChecking = false)
-                    }
                     checkServerDiskSpace()
                     _toastMessage.emit(ToastText(message = R.string.server_connection_ok))
                 } else {
-                    _settingsUiState.update {
-                        it.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                    }
                     _toastMessage.emit(ToastText(message = R.string.server_connection_failed))
                 }
             } catch (e: IOException){
-                _settingsUiState.update {
-                    it.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                }
                 _toastMessage.emit(ToastText(message = R.string.server_connection_failed))
             } finally {
                 _settingsUiState.update {
@@ -81,23 +71,9 @@ class SettingsViewModel(
         viewModelScope.launch {
             val userSettings = getCurrentUserSettings()
             try {
-                _settingsUiState.update {
-                    it.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
-                }
-                val serverResponse = settingsRepository.checkServerConnection(userSettings.serverIp)
-                if (serverResponse.isSuccessful){
-                    _settingsUiState.update {
-                        it.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
-                    }
-                } else {
-                    _settingsUiState.update {
-                        it.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                    }
-                }
+                settingsRepository.checkServerConnection(userSettings.serverIp)
             } catch (e: IOException){
-                _settingsUiState.update {
-                    it.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                }
+                _toastMessage.emit(ToastText(message = R.string.server_connection_failed))
             }
         }
     }
@@ -154,6 +130,13 @@ class SettingsViewModel(
         }
     }
     init {
+        viewModelScope.launch {
+            settingsRepository.serverConnectionFlow.collect {status ->
+                _settingsUiState.update {
+                    it.copy(serverConnectionStatus = status)
+                }
+            }
+        }
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }
             checkServerConnection()
