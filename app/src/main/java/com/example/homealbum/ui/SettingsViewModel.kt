@@ -42,13 +42,6 @@ class SettingsViewModel(
     val toastMessage = _toastMessage.asSharedFlow()
     private var _settingsUiState = MutableStateFlow(SettingsUiState())
     val settingsUiState = _settingsUiState.asStateFlow()
-    init {
-        viewModelScope.launch {
-            userSettings.first { it.serverIp.isNotBlank() }
-            checkServerConnection()
-            checkServerDiskSpace()
-        }
-    }
     fun saveServerSettings(ip: String, folderName: String){
         viewModelScope.launch {
             settingsRepository.saveServerSettings(ip, folderName)
@@ -63,6 +56,7 @@ class SettingsViewModel(
                         it.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED,
                             isChecking = false)
                     }
+                    checkServerDiskSpace()
                     _toastMessage.emit(ToastText(message = R.string.server_connection_ok))
                 } else {
                     _settingsUiState.update {
@@ -157,6 +151,13 @@ class SettingsViewModel(
             val workerId = generateWorkerId()
             uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
             coordinatorUploadScheduler.scheduleSyncUpload(workerId)
+        }
+    }
+    init {
+        viewModelScope.launch {
+            userSettings.first { it.serverIp.isNotBlank() }
+            checkServerConnection()
+            checkServerDiskSpace()
         }
     }
 
