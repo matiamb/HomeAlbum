@@ -56,4 +56,5 @@
     <string name="trash_screen_banner">Items in the trash will be deleted permanently after 30 days</string>
     <string name="switch_enable_automatic_uploads">Enable automatic uploads?</string>
     <string name="msg_server_ip_not_set">Server IP not set</string>
+    <string name="all_up_to_date_autoupload_worker_notification">All up to date</string>
 </resources>
