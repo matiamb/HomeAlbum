@@ -57,4 +57,10 @@
     <string name="switch_enable_automatic_uploads">Enable automatic uploads?</string>
     <string name="msg_server_ip_not_set">Server IP not set</string>
     <string name="all_up_to_date_autoupload_worker_notification">All up to date</string>
+    <string name="github_link">https://github.com/matiamb</string>
+    <string name="github_string">GitHub</string>
+    <string name="linkedin_link">https://linkedin.com/in/matias-mariano-ambrosi-a9498620a</string>
+    <string name="linkedin_string">LinkedIn</string>
+    <string name="developed_by_mati_ambrosi">Developed by Mati Ambrosi</string>
+    <string name="settings_storage_title">Storage</string>
 </resources>

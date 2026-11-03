@@ -1,8 +1,12 @@
 package com.example.homealbum.ui
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -43,7 +48,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.homealbum.R
@@ -99,24 +111,35 @@ fun SettingsScreen(
                         ),
                         animatedVisibilityScope = animatedVisibilityScope
                     )
+                    .padding(innerPadding)
             ) {
-                SettingItemCard(
-                    settingsState = settingsState.value,
-                    settingsUiState = settingsUiState.value,
-                    onBackupSwitched = { value ->
-                        settingsViewModel.saveBackupEnabled(value)
-                    },
-                    onMobileDataSwitched = { value ->
-                        settingsViewModel.saveMobileDataUpload(value)
-                    },
-                    onSaveClicked = { textIp, textFolderName ->
-                        settingsViewModel.saveServerSettings(textIp, textFolderName)
-                    },
-                    onAutoUploadSwitched = { value ->
-                        settingsViewModel.saveAutomaticBackup(value)
-                    },
-                    modifier = Modifier.padding(innerPadding)
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SettingItemCard(
+                        settingsState = settingsState.value,
+                        settingsUiState = settingsUiState.value,
+                        onBackupSwitched = { value ->
+                            settingsViewModel.saveBackupEnabled(value)
+                        },
+                        onMobileDataSwitched = { value ->
+                            settingsViewModel.saveMobileDataUpload(value)
+                        },
+                        onSaveClicked = { textIp, textFolderName ->
+                            settingsViewModel.saveServerSettings(textIp, textFolderName)
+                        },
+                        onAutoUploadSwitched = { value ->
+                            settingsViewModel.saveAutomaticBackup(value)
+                        },
+                        modifier = Modifier.weight(3f)
+                    )
+                    DevInfoCard(
+                        modifier = Modifier
+                    )
+                }
             }
 
         }
@@ -139,7 +162,7 @@ fun SettingItemCard(
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
-            .padding(32.dp),
+            .padding(horizontal = 32.dp),
         elevation = CardDefaults.cardElevation(16.dp)
     ) {
         Column(
@@ -329,10 +352,10 @@ fun ServerStorageItem(
     ){
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Storage",
+            text = stringResource(R.string.settings_storage_title),
             fontWeight = FontWeight.Bold
         )
         val diskSpacePercentage = (settingsUiState.serverDiskSpace.usedSpaceBytes/settingsUiState.serverDiskSpace.totalSpaceBytes).toFloat()
@@ -357,19 +380,140 @@ fun ServerStorageItem(
         )
     }
 }
-@Preview
+@Composable
+fun DevInfoCard(
+    modifier: Modifier = Modifier
+){
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp),
+        elevation = CardDefaults.cardElevation(16.dp)
+    ) {
+        val annotatedStringGh = buildAnnotatedString {
+            withLink(
+                LinkAnnotation.Url(
+                    url = stringResource(R.string.github_link)
+                ),
+                { append(stringResource(R.string.github_string)) }
+            )
+        }
+        val annotatedStringLi = buildAnnotatedString {
+            withLink(
+                LinkAnnotation.Url(
+                    url = stringResource(R.string.linkedin_link)
+                ),
+                { append(stringResource(R.string.linkedin_string)) }
+            )
+        }
+        val context = LocalContext.current
+        val appVersion = remember(context) { context.getAppVersionName() ?: "" }
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = stringResource(R.string.app_name)
+            )
+            Column() {
+                Text(
+                    text = stringResource(R.string.developed_by_mati_ambrosi),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painterResource(R.drawable.github_invertocat_black),
+                        contentDescription = "",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = annotatedStringGh,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        painterResource(R.drawable.outline_link_2_24),
+                        contentDescription = "",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painterResource(R.drawable.linkedin_svgrepo_com),
+                        contentDescription = "",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = annotatedStringLi,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        painterResource(R.drawable.outline_link_2_24),
+                        contentDescription = "",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Text(
+                    text = "HomeAlbum version: $appVersion",
+                    textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+
+    }
+}
+fun Context.getAppVersionName(): String? {
+    return try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(
+                packageName,
+                PackageManager.PackageInfoFlags.of(0)
+            ).versionName
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }
+    } catch (e: Exception) {
+        "Unknown"
+    }
+}
+@Preview(showSystemUi = true)
 @Composable
 private fun SettingsScreenPreview(){
     val settingsState = UserSettings("","", false, false, false)
     val settingsUiState = SettingsUiState(
         serverConnectionStatus = ServerConnectionStatus.CONNECTED,
         serverDiskSpace = DiskSpace(1.0, availableSpaceBytes = 0.1, usedSpaceBytes = 0.9))
-    SettingItemCard(
-        settingsState = settingsState,
-        settingsUiState = settingsUiState,
-        onBackupSwitched = {},
-        onMobileDataSwitched = {},
-        onAutoUploadSwitched = {},
-        onSaveClicked = {textIp, folderName ->}
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center
+    ) {
+        SettingItemCard(
+            settingsState = settingsState,
+            settingsUiState = settingsUiState,
+            onBackupSwitched = {},
+            onMobileDataSwitched = {},
+            onAutoUploadSwitched = {},
+            onSaveClicked = {textIp, folderName ->},
+            modifier = Modifier.weight(3f)
         )
+        DevInfoCard()
+    }
+
+}
+@Preview
+@Composable
+private fun DevInfoCardPreview(){
+    DevInfoCard()
 }
