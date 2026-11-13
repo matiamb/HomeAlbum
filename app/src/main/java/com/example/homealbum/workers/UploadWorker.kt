@@ -50,6 +50,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 cleanupUris.add(uri.toUri())
             }
             uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
+            setForeground(getForegroundInfo())
         }
         if (jobType == AUTOMATIC_UPLOAD_TAG){
             val userSettings = settingsRepository.userSettingsFlow.first()
@@ -59,6 +60,12 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 val updatedItemsList = offlinePhotoRepository.getLocalPhotos()
                 uploadQueueRepository.addMediaItemsToDb(updatedItemsList)
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                makeNotification(
+                    applicationContext,
+                    applicationContext.getString(R.string.starting_upload),
+                    NOTIFICATION_ID,
+                    true
+                )
             }
         }
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
@@ -71,9 +78,17 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 NOTIFICATION_ID)
             return Result.success()
         }
-        setForeground(getForegroundInfo())
+        val notificationId = if (jobType == MANUAL_UPLOAD_TAG){
+            NOTIFICATION_ID_FOREGROUND
+        } else {
+            NOTIFICATION_ID
+        }
+        //setForeground(getForegroundInfo())
         //makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         for ((uri1, fileHash) in uriList){
+            if (isStopped){
+                return Result.retry()
+            }
             uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
             try {
@@ -89,12 +104,12 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                     makeNotification(
                         applicationContext,
                         "$tempSuccessFiles of $tempTotalFiles uploaded",
-                        NOTIFICATION_ID_FOREGROUND,
+                        notificationId,
                         true)
                 } else {
                     makeNotification(applicationContext,
                         applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}",
-                        NOTIFICATION_ID_FOREGROUND,
+                        notificationId,
                         true)
                     uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.FAILED,workerId = workerId)
                     statusChanged = true
@@ -111,6 +126,9 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                             uploadQueueRepository.updateMediaItemStatus(uri1.toUri(), targetStatus, workerId = workerId)
                         }
                     }
+                }
+                if (isStopped){
+                    NotificationManagerCompat.from(applicationContext).cancel(notificationId)
                 }
             }
         }
