@@ -8,11 +8,14 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
+import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -60,12 +63,6 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 val updatedItemsList = offlinePhotoRepository.getLocalPhotos()
                 uploadQueueRepository.addMediaItemsToDb(updatedItemsList)
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
-                makeNotification(
-                    applicationContext,
-                    applicationContext.getString(R.string.starting_upload),
-                    NOTIFICATION_ID,
-                    true
-                )
             }
         }
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
@@ -84,7 +81,9 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
             NOTIFICATION_ID
         }
         //setForeground(getForegroundInfo())
-        //makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
+        if (jobType == AUTOMATIC_UPLOAD_TAG){
+            makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload), NOTIFICATION_ID)
+        }
         for ((uri1, fileHash) in uriList){
             if (isStopped){
                 return Result.retry()
