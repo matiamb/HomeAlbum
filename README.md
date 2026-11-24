@@ -110,6 +110,6 @@ Please remove personal or sensitive information before attaching logs or screens
 
 HomeAlbum is currently under active development.
 
-Current release: v0.4.0-beta.1
+Current release: v0.4.1-beta.1
 
 The API and application behavior may change while the project remains in beta.
