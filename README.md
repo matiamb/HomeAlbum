@@ -17,7 +17,7 @@ Beta: HomeAlbum is currently in early development and may contain bugs or incomp
 
 <img width="250" height="505" alt="Screenshot_20261030_101422_HomeAlbum" src="https://github.com/user-attachments/assets/21553800-2629-4e92-b315-2d5f22a5cd81" />
 <img width="250" height="505" alt="Screenshot_20261030_101447_HomeAlbum" src="https://github.com/user-attachments/assets/53db3fad-8b21-4cee-8374-4f92b0154bd9" />
-<img width="250" height="505" alt="Screenshot_20261030_101528_HomeAlbum" src="https://github.com/user-attachments/assets/2559a76a-0fcf-4ad5-9d6f-7f5ff05fd481" />
+<img width="250" height="505" alt="image" src="https://github.com/user-attachments/assets/3dae9ce1-0ce4-408b-a21c-18d265b98bdc" />
 
 ## 📱 Requirements
 
