@@ -1,15 +1,20 @@
 package com.example.homealbum.workers
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.example.homealbum.HomeAlbumApplication
 import com.example.homealbum.R
@@ -25,16 +30,19 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
     companion object {
         const val WORKER_ID = "worker_id"
         const val NOTIFICATION_ID = 1
+        const val NOTIFICATION_ID_FOREGROUND = 2
         const val JOB_TYPE = "job_type"
     }
     private val networkPhotoRepository = (context as HomeAlbumApplication).container.networkPhotoRepository
     private val uploadQueueRepository = (context as HomeAlbumApplication).container.uploadQueueRepository
     private val offlinePhotoRepository = (context as HomeAlbumApplication).container.offlinePhotoRepository
     private val settingsRepository = (context as HomeAlbumApplication).container.offlineSettingsRepository
+    @RequiresApi(Build.VERSION_CODES.Q)
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun doWork(): Result {
         val workerId = inputData.getString(WORKER_ID) ?: return Result.failure()
         val jobType = inputData.getString(JOB_TYPE) ?: return Result.failure()
+
         if (jobType == MANUAL_UPLOAD_TAG){
             val cleanupItems = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADING, workerId)
             val cleanupUris = mutableListOf<Uri>()
@@ -42,6 +50,7 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 cleanupUris.add(uri.toUri())
             }
             uploadQueueRepository.cleanUpStuckFilesByWorker(cleanupUris, UploadStatus.PENDING, workerId)
+            setForeground(getForegroundInfo())
         }
         if (jobType == AUTOMATIC_UPLOAD_TAG){
             val userSettings = settingsRepository.userSettingsFlow.first()
@@ -51,17 +60,35 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                 val updatedItemsList = offlinePhotoRepository.getLocalPhotos()
                 uploadQueueRepository.addMediaItemsToDb(updatedItemsList)
                 uploadQueueRepository.prepareFilesForAutoUpload(UploadStatus.PENDING, workerId)
+                makeNotification(
+                    applicationContext,
+                    applicationContext.getString(R.string.starting_upload),
+                    NOTIFICATION_ID,
+                    true
+                )
             }
         }
         val uriList = uploadQueueRepository.getPendingUploads(UploadStatus.PENDING, workerId)
         val tempTotalFiles = uriList.size
         var tempSuccessFiles = 0
         var statusChanged = false
-        makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         if (uriList.isEmpty()){
+            makeNotification(applicationContext,
+                applicationContext.getString(R.string.all_up_to_date_autoupload_worker_notification),
+                NOTIFICATION_ID)
             return Result.success()
         }
+        val notificationId = if (jobType == MANUAL_UPLOAD_TAG){
+            NOTIFICATION_ID_FOREGROUND
+        } else {
+            NOTIFICATION_ID
+        }
+        //setForeground(getForegroundInfo())
+        //makeNotification(applicationContext, applicationContext.getString(R.string.starting_upload))
         for ((uri1, fileHash) in uriList){
+            if (isStopped){
+                return Result.retry()
+            }
             uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADING, workerId = workerId)
             statusChanged = false
             try {
@@ -74,10 +101,16 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                     uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.UPLOADED, fileHash = serverResponse.fileHash, workerId = workerId)
                     statusChanged = true
                     tempSuccessFiles++
-                    makeNotification(applicationContext, "$tempSuccessFiles of $tempTotalFiles uploaded")
+                    makeNotification(
+                        applicationContext,
+                        "$tempSuccessFiles of $tempTotalFiles uploaded",
+                        notificationId,
+                        true)
                 } else {
                     makeNotification(applicationContext,
-                        applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}")
+                        applicationContext.getString(R.string.file_could_not_be_uploaded) + "${serverResponse.serverResponse!!.errorBody()?.string()}",
+                        notificationId,
+                        true)
                     uploadQueueRepository.updateMediaItemStatus(uri = uri1.toUri(), status = UploadStatus.FAILED,workerId = workerId)
                     statusChanged = true
                 }
@@ -94,20 +127,40 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
                         }
                     }
                 }
+                if (isStopped){
+                    NotificationManagerCompat.from(applicationContext).cancel(notificationId)
+                }
             }
         }
         val totalFiles = uploadQueueRepository.getMediaItemsByWorker(workerId)
         val successFiles = uploadQueueRepository.getPendingUploads(UploadStatus.UPLOADED, workerId)
         return if(totalFiles.isNotEmpty() && successFiles.size.toDouble()/totalFiles.size.toDouble() >= 0.5){
-            makeNotification(context = applicationContext, message = "${successFiles.size} of ${totalFiles.size} uploaded")
+            makeNotification(
+                context = applicationContext,
+                message = "Upload completed: ${successFiles.size} of ${totalFiles.size} uploaded",
+                notificationId = NOTIFICATION_ID)
             Result.success()
         } else {
-            makeNotification(context = applicationContext, message = "Warning. Only ${successFiles.size} of ${totalFiles.size} uploaded")
+            makeNotification(
+                context = applicationContext,
+                message = "Warning. Only ${successFiles.size} of ${totalFiles.size} uploaded",
+                notificationId = NOTIFICATION_ID)
             Result.failure()
         }
     }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun makeNotification(context: Context, message: String?){
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        return ForegroundInfo(
+            NOTIFICATION_ID_FOREGROUND,
+            makeNotification(applicationContext, "Upload in progress", NOTIFICATION_ID_FOREGROUND, true),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun makeNotification(context: Context, message: String?, notificationId: Int, showProgress: Boolean = false): Notification{
         val name = context.getString(R.string.upload_notification_channel_name)
         val description = context.getString(R.string.upload_notification_channel_description)
         val importance = NotificationManager.IMPORTANCE_HIGH
@@ -121,7 +174,13 @@ class UploadWorker(context: Context, workerParams: WorkerParameters) : Coroutine
             .setContentTitle(context.getString(R.string.upload_status_notification_title))
             .setOnlyAlertOnce(true)
             .setContentText(message)
-
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        val notification = if (showProgress){
+                builder.setProgress(0,0, true)
+                    .build()
+            } else {
+                builder.build()
+            }
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
+        return notification
     }
 }

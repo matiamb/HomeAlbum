@@ -150,32 +150,19 @@ class GalleryViewModel(
     }
     fun checkServerConnection(){
         viewModelScope.launch {
+            if (userSettings.value.serverIp.isBlank()){
+                _toastMessage.emit(ToastText(message = R.string.msg_server_ip_not_set))
+                return@launch
+            }
             try {
                 if (userSettings.value.isBackupEnabled){
-                    _galleryUiState.update { state ->
-                        state.copy(serverConnectionStatus = ServerConnectionStatus.CHECKING)
-                    }
-                    val serverResponse = settingsRepository.checkServerConnection(userSettings.value.serverIp)
-                    if (serverResponse.isSuccessful){
-                        _galleryUiState.update { state ->
-                            state.copy(serverConnectionStatus = ServerConnectionStatus.CONNECTED)
-                        }
-                    } else {
-                        _galleryUiState.update { state ->
-                            state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                        }
-                    }
+                    settingsRepository.checkServerConnection(userSettings.value.serverIp)
                 } else {
-                    _galleryUiState.update { state ->
-                        state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                    }
+                    _toastMessage.emit(ToastText(message = R.string.local_backup_is_disabled_msg))
                 }
             } catch (e: IOException){
-                _galleryUiState.update { state ->
-                    state.copy(serverConnectionStatus = ServerConnectionStatus.FAILED)
-                }
+                _toastMessage.emit(ToastText(message = R.string.connection_error_msg))
             }
-
         }
     }
     fun multipleSelection(uri: Uri){
@@ -252,6 +239,13 @@ class GalleryViewModel(
     init {
         observeSyncStatus()
         observeUpload()
+        viewModelScope.launch {
+            settingsRepository.serverConnectionFlow.collect {status ->
+                _galleryUiState.update {
+                    it.copy(serverConnectionStatus = status)
+                }
+            }
+        }
         viewModelScope.launch {
             userSettings.first { it.serverIp.isNotBlank() }
             checkServerConnection()

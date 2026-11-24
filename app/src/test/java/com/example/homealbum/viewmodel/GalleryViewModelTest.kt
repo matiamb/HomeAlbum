@@ -236,6 +236,7 @@ class GalleryViewModelTest {
     @Test
     fun checkServerConnection_serverConnectionSuccessful_settingsUiStateConnected(){
         runTest {
+            fakeSettingsRepository.setServerIp("testIp")
             fakeSettingsRepository.connectionSuccessful = true
             fakeSettingsRepository.shouldThrowException = false
             galleryViewModelTest.checkServerConnection()
@@ -249,6 +250,7 @@ class GalleryViewModelTest {
     @Test
     fun checkServerConnection_serverConnectionFailed_settingsUiStateFailed(){
         runTest {
+            fakeSettingsRepository.setServerIp("testIp")
             fakeSettingsRepository.connectionSuccessful = false
             fakeSettingsRepository.shouldThrowException = false
             galleryViewModelTest.checkServerConnection()

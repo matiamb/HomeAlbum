@@ -69,7 +69,7 @@ class SettingsViewModelTest {
     }
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun saveServerSettings_settingsAreSaved_emitsExpectedToast(){
+    fun saveServerSettings_settingsAreSaved_emitsExpectedToastAndDiskspaceInfoIsUpdated(){
         runTest{
             val serverIpToSave = "100.0.0.1"
             val folderNameToSave = "Test Folder"
@@ -81,8 +81,10 @@ class SettingsViewModelTest {
             }
             advanceUntilIdle()
             val serverSettings = fakeSettingsRepository.userSettingsFlow.first()
+            val settingsUiState = settingsViewModelTest.settingsUiState.value
             assertEquals(serverIpToSave, serverSettings.serverIp)
             assertEquals(folderNameToSave, serverSettings.serverFolderName)
+            assertEquals(fakeSettingsRepository.diskSpaceItem, settingsUiState.serverDiskSpace)
         }
     }
     @OptIn(ExperimentalCoroutinesApi::class)
